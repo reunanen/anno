@@ -51,12 +51,24 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::init()
 {
+    createFileList();
+
     const QSettings settings(companyName, applicationName);
     const QString defaultDirectory = settings.value("defaultDirectory").toString();
     openFolder(defaultDirectory);
 
+    QDockWidget* imageDockWidget = new QDockWidget(tr("Image"), this);
+    imageDockWidget->setObjectName("Image");
+
     image = new QResultImageView(this);
-    setCentralWidget(image);
+
+    imageDockWidget->setWidget(image);
+    addDockWidget(Qt::RightDockWidgetArea, imageDockWidget);
+
+    setCentralWidget(nullptr);
+
+    restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
+    restoreState(settings.value("mainWindowState").toByteArray());
 }
 
 void MainWindow::createFileList()
