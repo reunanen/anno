@@ -7,6 +7,9 @@ namespace Ui {
 class MainWindow;
 }
 
+class QTreeWidget;
+class QTreeWidgetItem;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -20,9 +23,13 @@ protected:
 
 private slots:
     void init();
+    void createFileList();
+    void onOpenFolder();
+    void onFileClicked(QTreeWidgetItem* item, int column);
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow* ui;
+    QTreeWidget* files = nullptr;
 };
 
 #endif // MAINWINDOW_H
