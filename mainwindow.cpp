@@ -10,6 +10,8 @@
 #include <QDockWidget>
 #include <assert.h>
 
+#include "QResultImageView/QResultImageView.h"
+
 namespace {
     const char* companyName = "Tomaattinen";
     const char* applicationName = "anno";
@@ -52,6 +54,9 @@ void MainWindow::init()
     const QSettings settings(companyName, applicationName);
     const QString defaultDirectory = settings.value("defaultDirectory").toString();
     openFolder(defaultDirectory);
+
+    image = new QResultImageView(this);
+    setCentralWidget(image);
 }
 
 void MainWindow::createFileList()
@@ -124,5 +129,10 @@ void MainWindow::openFolder(const QString& dir)
 
 void MainWindow::onFileClicked(QTreeWidgetItem* item, int column)
 {
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QApplication::processEvents(); // actually update the cursor
 
+    image->setImage(QImage(item->text(column)));
+
+    QApplication::restoreOverrideCursor();
 }

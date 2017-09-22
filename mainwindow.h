@@ -9,6 +9,7 @@ class MainWindow;
 
 class QTreeWidget;
 class QTreeWidgetItem;
+class QResultImageView;
 
 class MainWindow : public QMainWindow
 {
@@ -32,6 +33,7 @@ private:
 
     Ui::MainWindow* ui;
     QTreeWidget* files = nullptr;
+    QResultImageView* image = nullptr;
 };
 
 #endif // MAINWINDOW_H
