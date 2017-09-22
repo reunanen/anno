@@ -28,6 +28,8 @@ private slots:
     void onFileClicked(QTreeWidgetItem* item, int column);
 
 private:
+    void openFolder(const QString& dir);
+
     Ui::MainWindow* ui;
     QTreeWidget* files = nullptr;
 };

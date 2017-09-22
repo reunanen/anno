@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     setWindowTitle("anno");
 
-    QSettings settings(companyName, applicationName);
+    const QSettings settings(companyName, applicationName);
     restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     restoreState(settings.value("mainWindowState").toByteArray());
 
@@ -49,6 +49,9 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::init()
 {
+    const QSettings settings(companyName, applicationName);
+    const QString defaultDirectory = settings.value("defaultDirectory").toString();
+    openFolder(defaultDirectory);
 }
 
 void MainWindow::createFileList()
@@ -84,34 +87,39 @@ void MainWindow::onOpenFolder()
     if (!dir.isEmpty()) {
         settings.setValue("defaultDirectory", dir);
 
-        if (!files) {
-            createFileList();
-        }
-
-        files->clear();
-
-        QList<QTreeWidgetItem *> items;
-
-        QStringList columns;
-        while (columns.count() < files->columnCount()) {
-            columns.append("");
-        }
-
-        QApplication::setOverrideCursor(Qt::WaitCursor);
-        QApplication::processEvents(); // actually update the cursor
-
-        QDirIterator it(dir, QStringList() << "*.jpg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            QString filename = it.next();
-            columns[0] = filename;
-            QTreeWidgetItem* item = new QTreeWidgetItem(files, columns);
-            items.append(item);
-        }
-
-        files->insertTopLevelItems(0, items);
-
-        QApplication::restoreOverrideCursor();
+        openFolder(dir);
     }
+}
+
+void MainWindow::openFolder(const QString& dir)
+{
+    if (!files) {
+        createFileList();
+    }
+
+    files->clear();
+
+    QList<QTreeWidgetItem *> items;
+
+    QStringList columns;
+    while (columns.count() < files->columnCount()) {
+        columns.append("");
+    }
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QApplication::processEvents(); // actually update the cursor
+
+    QDirIterator it(dir, QStringList() << "*.jpg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString filename = it.next();
+        columns[0] = filename;
+        QTreeWidgetItem* item = new QTreeWidgetItem(files, columns);
+        items.append(item);
+    }
+
+    files->insertTopLevelItems(0, items);
+
+    QApplication::restoreOverrideCursor();
 }
 
 void MainWindow::onFileClicked(QTreeWidgetItem* item, int column)
