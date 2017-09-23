@@ -9,6 +9,7 @@
 #include <QDirIterator>
 #include <QDockWidget>
 #include <QSpinBox>
+#include <QCheckBox>
 #include <QVBoxLayout>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrentRun>
@@ -134,6 +135,11 @@ void MainWindow::createToolList()
 
     connect(markingRadius, SIGNAL(valueChanged(int)), this, SLOT(onMarkingRadiusChanged(int)));
 
+    markingsVisible = new QCheckBox("Markings visible", this);
+    markingsVisible->setChecked(true);
+
+    connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
+
     tools = new QTreeWidget(this);
 
     tools->setColumnCount(1);
@@ -170,6 +176,7 @@ void MainWindow::createToolList()
 
     connect(tools, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onToolClicked(QTreeWidgetItem*,int)));
 
+    layout->addWidget(markingsVisible);
     layout->addWidget(markingRadius);
     layout->addWidget(tools);
 }
@@ -258,6 +265,11 @@ void MainWindow::onToolClicked(QTreeWidgetItem* item, int column)
 void MainWindow::onMarkingRadiusChanged(int i)
 {
     image->setMarkingRadius(i);
+}
+
+void MainWindow::onMarkingsVisible(bool toggled)
+{
+    image->setMaskVisible(toggled);
 }
 
 void MainWindow::onMaskUpdated()

@@ -10,6 +10,7 @@ class MainWindow;
 class QTreeWidget;
 class QTreeWidgetItem;
 class QSpinBox;
+class QCheckBox;
 class QResultImageView;
 
 class MainWindow : public QMainWindow
@@ -29,6 +30,7 @@ private slots:
     void onFileClicked(QTreeWidgetItem* item, int column);
     void onToolClicked(QTreeWidgetItem* item, int column);
     void onMarkingRadiusChanged(int i);
+    void onMarkingsVisible(bool toggled);
     void onMaskUpdated();
     void onSaveMask();
 
@@ -54,6 +56,7 @@ private:
     QTreeWidgetItem* eraseToolItem = nullptr;
 
     QSpinBox* markingRadius = nullptr;
+    QCheckBox* markingsVisible = nullptr;
 
     QString currentImageFile;
 
