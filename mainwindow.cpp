@@ -173,6 +173,7 @@ void MainWindow::createToolList()
     }
 
     tools->insertTopLevelItems(0, items);
+    panToolItem->setSelected(true);
 
     connect(tools, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onToolClicked(QTreeWidgetItem*,int)));
 
