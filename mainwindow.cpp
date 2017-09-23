@@ -52,23 +52,22 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::init()
 {
     createFileList();
+    createToolList();
+    createImageView();
 
     const QSettings settings(companyName, applicationName);
     const QString defaultDirectory = settings.value("defaultDirectory").toString();
     openFolder(defaultDirectory);
 
-    QDockWidget* imageDockWidget = new QDockWidget(tr("Image"), this);
-    imageDockWidget->setObjectName("Image");
-
-    image = new QResultImageView(this);
-
-    imageDockWidget->setWidget(image);
-    addDockWidget(Qt::RightDockWidgetArea, imageDockWidget);
-
-    setCentralWidget(nullptr);
-
     restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     restoreState(settings.value("mainWindowState").toByteArray());
+}
+
+void MainWindow::createImageView()
+{
+    image = new QResultImageView(this);
+
+    setCentralWidget(image);
 }
 
 void MainWindow::createFileList()
@@ -92,6 +91,29 @@ void MainWindow::createFileList()
     files->setHeaderItem(headerItem);
 
     connect(files, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onFileClicked(QTreeWidgetItem*,int)));
+}
+
+void MainWindow::createToolList()
+{
+    QDockWidget* dockWidget = new QDockWidget(tr("Tools"), this);
+    dockWidget->setObjectName("Tools");
+
+    tools = new QTreeWidget(this);
+
+    dockWidget->setWidget(tools);
+    addDockWidget(Qt::RightDockWidgetArea, dockWidget);
+
+    tools->setColumnCount(1);
+    tools->setFont(QFont("Arial", 10, 0));
+
+    QStringList columns;
+    columns.append(tr("Name"));
+
+    QTreeWidgetItem* headerItem = new QTreeWidgetItem(columns);
+    headerItem->setTextAlignment(0, Qt::AlignLeft);
+    tools->setHeaderItem(headerItem);
+
+    connect(tools, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onToolClicked(QTreeWidgetItem*,int)));
 }
 
 void MainWindow::onOpenFolder()
@@ -147,4 +169,8 @@ void MainWindow::onFileClicked(QTreeWidgetItem* item, int column)
     image->setImage(QImage(item->text(column)));
 
     QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::onToolClicked(QTreeWidgetItem* item, int column)
+{
 }

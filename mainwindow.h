@@ -24,15 +24,20 @@ protected:
 
 private slots:
     void init();
-    void createFileList();
     void onOpenFolder();
     void onFileClicked(QTreeWidgetItem* item, int column);
+    void onToolClicked(QTreeWidgetItem* item, int column);
 
 private:
+    void createFileList();
+    void createToolList();
+    void createImageView();
+
     void openFolder(const QString& dir);
 
     Ui::MainWindow* ui;
     QTreeWidget* files = nullptr;
+    QTreeWidget* tools = nullptr;
     QResultImageView* image = nullptr;
 };
 
