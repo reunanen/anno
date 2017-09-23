@@ -41,6 +41,9 @@ private:
     void saveMaskIfDirty();
     void saveMask();
 
+    static QString getMaskFilenameSuffix();
+    static QString getMaskFilename(const QString& baseImageFilename);
+
     Ui::MainWindow* ui;
     QTreeWidget* files = nullptr;
     QTreeWidget* tools = nullptr;

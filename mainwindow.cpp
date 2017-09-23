@@ -10,6 +10,8 @@
 #include <QDockWidget>
 #include <QSpinBox>
 #include <QVBoxLayout>
+#include <QFuture>
+#include <QtConcurrent/QtConcurrentRun>
 #include <assert.h>
 
 #include "QResultImageView/QResultImageView.h"
@@ -204,10 +206,12 @@ void MainWindow::openFolder(const QString& dir)
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
+    const QString maskFilenameSuffix = getMaskFilenameSuffix();
+
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filename = it.next();
-        if (filename.right(9) != "_mask.png") {
+        if (filename.right(maskFilenameSuffix.length()) != maskFilenameSuffix) {
             columns[0] = filename;
             QTreeWidgetItem* item = new QTreeWidgetItem(files, columns);
             items.append(item);
@@ -228,7 +232,12 @@ void MainWindow::onFileClicked(QTreeWidgetItem* item, int column)
 
     currentImageFile = item->text(column);
 
-    image->setImage(QImage(currentImageFile));
+    const auto readImage = [](const QString& filename) { return QImage(filename); };
+
+    QFuture<QImage> imageFuture = QtConcurrent::run(readImage, currentImageFile);
+    QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(currentImageFile));
+
+    image->setImageAndMask(imageFuture.result(), maskFuture.result());
 
     QApplication::restoreOverrideCursor();
 }
@@ -287,11 +296,21 @@ void MainWindow::saveMask()
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
-    QFile file(currentImageFile + "_mask.png");
+    QFile file(getMaskFilename(currentImageFile));
     file.open(QIODevice::WriteOnly);
     image->getMask().save(&file, "PNG");
 
     QApplication::restoreOverrideCursor();
 
     maskDirty = false;
+}
+
+QString MainWindow::getMaskFilenameSuffix()
+{
+    return "_mask.png";
+}
+
+QString MainWindow::getMaskFilename(const QString& baseImageFilename)
+{
+    return baseImageFilename + getMaskFilenameSuffix();
 }
