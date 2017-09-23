@@ -44,6 +44,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    saveMaskIfDirty();
+
     QSettings settings(companyName, applicationName);
     settings.setValue("mainWindowGeometry", saveGeometry());
     settings.setValue("mainWindowState", saveState());
@@ -76,6 +78,8 @@ void MainWindow::createImageView()
     image = new QResultImageView(this);
 
     setCentralWidget(image);
+
+    connect(image, SIGNAL(maskUpdated()), this, SLOT(onMaskUpdated()));
 }
 
 void MainWindow::createFileList()
@@ -203,9 +207,11 @@ void MainWindow::openFolder(const QString& dir)
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filename = it.next();
-        columns[0] = filename;
-        QTreeWidgetItem* item = new QTreeWidgetItem(files, columns);
-        items.append(item);
+        if (filename.right(9) != "_mask.png") {
+            columns[0] = filename;
+            QTreeWidgetItem* item = new QTreeWidgetItem(files, columns);
+            items.append(item);
+        }
     }
 
     files->insertTopLevelItems(0, items);
@@ -215,10 +221,14 @@ void MainWindow::openFolder(const QString& dir)
 
 void MainWindow::onFileClicked(QTreeWidgetItem* item, int column)
 {
+    saveMaskIfDirty();
+
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
-    image->setImage(QImage(item->text(column)));
+    currentImageFile = item->text(column);
+
+    image->setImage(QImage(currentImageFile));
 
     QApplication::restoreOverrideCursor();
 }
@@ -239,4 +249,49 @@ void MainWindow::onToolClicked(QTreeWidgetItem* item, int column)
 void MainWindow::onMarkingRadiusChanged(int i)
 {
     image->setMarkingRadius(i);
+}
+
+void MainWindow::onMaskUpdated()
+{
+    maskDirty = true;
+
+    ++saveMaskPendingCounter;
+
+    QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+}
+
+void MainWindow::onSaveMask()
+{
+    Q_ASSERT(maskDirty);
+
+    --saveMaskPendingCounter;
+
+    Q_ASSERT(saveMaskPendingCounter >= 0);
+
+    if (saveMaskPendingCounter == 0) {
+        saveMask();
+    }
+}
+
+void MainWindow::saveMaskIfDirty()
+{
+    if (maskDirty) {
+        saveMask();
+    }
+}
+
+void MainWindow::saveMask()
+{
+    assert(maskDirty);
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QApplication::processEvents(); // actually update the cursor
+
+    QFile file(currentImageFile + "_mask.png");
+    file.open(QIODevice::WriteOnly);
+    image->getMask().save(&file, "PNG");
+
+    QApplication::restoreOverrideCursor();
+
+    maskDirty = false;
 }

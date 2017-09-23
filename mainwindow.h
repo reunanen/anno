@@ -29,6 +29,8 @@ private slots:
     void onFileClicked(QTreeWidgetItem* item, int column);
     void onToolClicked(QTreeWidgetItem* item, int column);
     void onMarkingRadiusChanged(int i);
+    void onMaskUpdated();
+    void onSaveMask();
 
 private:
     void createFileList();
@@ -36,6 +38,8 @@ private:
     void createImageView();
 
     void openFolder(const QString& dir);
+    void saveMaskIfDirty();
+    void saveMask();
 
     Ui::MainWindow* ui;
     QTreeWidget* files = nullptr;
@@ -47,6 +51,11 @@ private:
     QTreeWidgetItem* eraseToolItem = nullptr;
 
     QSpinBox* markingRadius = nullptr;
+
+    QString currentImageFile;
+
+    bool maskDirty = false;
+    int saveMaskPendingCounter = 0;
 };
 
 #endif // MAINWINDOW_H
