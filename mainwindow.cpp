@@ -11,6 +11,8 @@
 #include <QSpinBox>
 #include <QCheckBox>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrentRun>
 #include <assert.h>
@@ -128,17 +130,24 @@ void MainWindow::createToolList()
         radius = 10;
     }
 
-    markingRadius = new QSpinBox(this);
-    markingRadius->setMinimum(1);
-    markingRadius->setMaximum(100);
-    markingRadius->setValue(radius);
+    QWidget* markingRadiusWidget = new QWidget(this);
+    {
+        markingRadius = new QSpinBox(this);
+        markingRadius->setMinimum(1);
+        markingRadius->setMaximum(100);
+        markingRadius->setValue(radius);
 
-    connect(markingRadius, SIGNAL(valueChanged(int)), this, SLOT(onMarkingRadiusChanged(int)));
+        connect(markingRadius, SIGNAL(valueChanged(int)), this, SLOT(onMarkingRadiusChanged(int)));
 
-    markingsVisible = new QCheckBox("Markings visible", this);
-    markingsVisible->setChecked(true);
+        markingsVisible = new QCheckBox("Markings visible", this);
+        markingsVisible->setChecked(true);
 
-    connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
+        connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
+
+        QHBoxLayout* markingRadiusLayout = new QHBoxLayout(markingRadiusWidget);
+        markingRadiusLayout->addWidget(new QLabel(tr("Marking radius"), this));
+        markingRadiusLayout->addWidget(markingRadius);
+    }
 
     tools = new QTreeWidget(this);
 
@@ -178,7 +187,7 @@ void MainWindow::createToolList()
     connect(tools, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onToolClicked(QTreeWidgetItem*,int)));
 
     layout->addWidget(markingsVisible);
-    layout->addWidget(markingRadius);
+    layout->addWidget(markingRadiusWidget);
     layout->addWidget(tools);
 }
 
