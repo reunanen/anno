@@ -15,6 +15,7 @@
 #include <QLabel>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QMessageBox>
 #include <assert.h>
 
 #include "QResultImageView/QResultImageView.h"
@@ -303,14 +304,14 @@ void MainWindow::onPostponeMaskUpdate()
 
 void MainWindow::onSaveMask()
 {
-    Q_ASSERT(maskDirty);
+    if (saveMaskPendingCounter > 0) {
+        Q_ASSERT(maskDirty);
 
-    --saveMaskPendingCounter;
+        --saveMaskPendingCounter;
 
-    Q_ASSERT(saveMaskPendingCounter >= 0);
-
-    if (saveMaskPendingCounter == 0) {
-        saveMask();
+        if (saveMaskPendingCounter == 0) {
+            saveMask();
+        }
     }
 }
 
@@ -335,6 +336,7 @@ void MainWindow::saveMask()
     QApplication::restoreOverrideCursor();
 
     maskDirty = false;
+    saveMaskPendingCounter = 0;
 }
 
 QString MainWindow::getMaskFilenameSuffix()
