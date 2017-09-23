@@ -172,7 +172,7 @@ void MainWindow::createToolList()
         items.append(eraseToolItem);
     }
 
-    files->insertTopLevelItems(0, items);
+    tools->insertTopLevelItems(0, items);
 
     connect(tools, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onToolClicked(QTreeWidgetItem*,int)));
 
