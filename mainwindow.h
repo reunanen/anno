@@ -39,6 +39,10 @@ private:
     QTreeWidget* files = nullptr;
     QTreeWidget* tools = nullptr;
     QResultImageView* image = nullptr;
+
+    QTreeWidgetItem* panToolItem = nullptr;
+    QTreeWidgetItem* markDefectsToolItem = nullptr;
+    QTreeWidgetItem* eraseToolItem = nullptr;
 };
 
 #endif // MAINWINDOW_H

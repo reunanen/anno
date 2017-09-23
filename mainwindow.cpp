@@ -107,11 +107,33 @@ void MainWindow::createToolList()
     tools->setFont(QFont("Arial", 10, 0));
 
     QStringList columns;
-    columns.append(tr("Name"));
+    columns.append(tr(""));
 
     QTreeWidgetItem* headerItem = new QTreeWidgetItem(columns);
     headerItem->setTextAlignment(0, Qt::AlignLeft);
     tools->setHeaderItem(headerItem);
+
+    QList<QTreeWidgetItem *> items;
+
+    {
+        columns[0] = "Pan";
+        panToolItem = new QTreeWidgetItem(tools, columns);
+        items.append(panToolItem);
+    }
+
+    {
+        columns[0] = "Mark defect";
+        markDefectsToolItem = new QTreeWidgetItem(tools, columns);
+        items.append(markDefectsToolItem);
+    }
+
+    {
+        columns[0] = "Erase";
+        eraseToolItem = new QTreeWidgetItem(tools, columns);
+        items.append(eraseToolItem);
+    }
+
+    files->insertTopLevelItems(0, items);
 
     connect(tools, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onToolClicked(QTreeWidgetItem*,int)));
 }
@@ -173,4 +195,13 @@ void MainWindow::onFileClicked(QTreeWidgetItem* item, int column)
 
 void MainWindow::onToolClicked(QTreeWidgetItem* item, int column)
 {
+    if (item == panToolItem) {
+        image->setLeftMouseMode(QResultImageView::LeftMouseMode::Pan);
+    }
+    else if (item == markDefectsToolItem) {
+        image->setLeftMouseMode(QResultImageView::LeftMouseMode::Mark);
+    }
+    else if (item == eraseToolItem) {
+        image->setLeftMouseMode(QResultImageView::LeftMouseMode::Erase);
+    }
 }
