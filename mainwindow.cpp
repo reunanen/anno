@@ -85,6 +85,8 @@ void MainWindow::createImageView()
     setCentralWidget(image);
 
     connect(image, SIGNAL(maskUpdated()), this, SLOT(onMaskUpdated()));
+    connect(image, SIGNAL(panned()), this, SLOT(onPostponeMaskUpdate()));
+    connect(image, SIGNAL(zoomed()), this, SLOT(onPostponeMaskUpdate()));
 }
 
 void MainWindow::createFileList()
@@ -289,6 +291,14 @@ void MainWindow::onMaskUpdated()
     ++saveMaskPendingCounter;
 
     QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+}
+
+void MainWindow::onPostponeMaskUpdate()
+{
+    if (maskDirty) {
+        ++saveMaskPendingCounter;
+        QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+    }
 }
 
 void MainWindow::onSaveMask()

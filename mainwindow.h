@@ -32,6 +32,7 @@ private slots:
     void onMarkingRadiusChanged(int i);
     void onMarkingsVisible(bool toggled);
     void onMaskUpdated();
+    void onPostponeMaskUpdate();
     void onSaveMask();
 
 private:
