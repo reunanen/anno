@@ -8,6 +8,8 @@
 #include <QFileDialog>
 #include <QDirIterator>
 #include <QDockWidget>
+#include <QSpinBox>
+#include <QVBoxLayout>
 #include <assert.h>
 
 #include "QResultImageView/QResultImageView.h"
@@ -46,6 +48,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
     settings.setValue("mainWindowGeometry", saveGeometry());
     settings.setValue("mainWindowState", saveState());
 
+    if (markingRadius) {
+        settings.setValue("markingRadius", markingRadius->value());
+    }
+
     QMainWindow::closeEvent(event);
 }
 
@@ -54,6 +60,8 @@ void MainWindow::init()
     createFileList();
     createToolList();
     createImageView();
+
+    image->setMarkingRadius(markingRadius->value());
 
     const QSettings settings(companyName, applicationName);
     const QString defaultDirectory = settings.value("defaultDirectory").toString();
@@ -95,13 +103,32 @@ void MainWindow::createFileList()
 
 void MainWindow::createToolList()
 {
+    const QSettings settings(companyName, applicationName);
+
     QDockWidget* dockWidget = new QDockWidget(tr("Tools"), this);
     dockWidget->setObjectName("Tools");
 
-    tools = new QTreeWidget(this);
+    QWidget* widget = new QWidget(this);
 
-    dockWidget->setWidget(tools);
-    addDockWidget(Qt::RightDockWidgetArea, dockWidget);
+    dockWidget->setWidget(widget);
+
+    QVBoxLayout* layout = new QVBoxLayout(widget);
+    layout->setSpacing(0);
+
+    bool radiusOk = false;
+    int radius = settings.value("markingRadius").toInt(&radiusOk);
+    if (!radiusOk) {
+        radius = 10;
+    }
+
+    markingRadius = new QSpinBox(this);
+    markingRadius->setMinimum(1);
+    markingRadius->setMaximum(100);
+    markingRadius->setValue(radius);
+
+    connect(markingRadius, SIGNAL(valueChanged(int)), this, SLOT(onMarkingRadiusChanged(int)));
+
+    tools = new QTreeWidget(this);
 
     tools->setColumnCount(1);
     tools->setFont(QFont("Arial", 10, 0));
@@ -136,6 +163,9 @@ void MainWindow::createToolList()
     files->insertTopLevelItems(0, items);
 
     connect(tools, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onToolClicked(QTreeWidgetItem*,int)));
+
+    layout->addWidget(markingRadius);
+    layout->addWidget(tools);
 }
 
 void MainWindow::onOpenFolder()
@@ -204,4 +234,9 @@ void MainWindow::onToolClicked(QTreeWidgetItem* item, int column)
     else if (item == eraseToolItem) {
         image->setLeftMouseMode(QResultImageView::LeftMouseMode::Erase);
     }
+}
+
+void MainWindow::onMarkingRadiusChanged(int i)
+{
+    image->setMarkingRadius(i);
 }

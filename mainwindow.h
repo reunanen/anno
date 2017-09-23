@@ -9,6 +9,7 @@ class MainWindow;
 
 class QTreeWidget;
 class QTreeWidgetItem;
+class QSpinBox;
 class QResultImageView;
 
 class MainWindow : public QMainWindow
@@ -27,6 +28,7 @@ private slots:
     void onOpenFolder();
     void onFileClicked(QTreeWidgetItem* item, int column);
     void onToolClicked(QTreeWidgetItem* item, int column);
+    void onMarkingRadiusChanged(int i);
 
 private:
     void createFileList();
@@ -43,6 +45,8 @@ private:
     QTreeWidgetItem* panToolItem = nullptr;
     QTreeWidgetItem* markDefectsToolItem = nullptr;
     QTreeWidgetItem* eraseToolItem = nullptr;
+
+    QSpinBox* markingRadius = nullptr;
 };
 
 #endif // MAINWINDOW_H
