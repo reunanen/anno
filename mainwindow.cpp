@@ -123,6 +123,7 @@ void MainWindow::createToolList()
     QWidget* widget = new QWidget(this);
 
     dockWidget->setWidget(widget);
+    addDockWidget(Qt::RightDockWidgetArea, dockWidget);
 
     QVBoxLayout* layout = new QVBoxLayout(widget);
     layout->setSpacing(0);
