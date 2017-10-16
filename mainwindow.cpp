@@ -228,11 +228,14 @@ void MainWindow::openFolder(const QString& dir)
     QApplication::processEvents(); // actually update the cursor
 
     const QString maskFilenameSuffix = getMaskFilenameSuffix();
+    const QString inferenceResultFilenameSuffix = getInferenceResultFilenameSuffix();
 
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filename = it.next();
-        if (filename.right(maskFilenameSuffix.length()) != maskFilenameSuffix) {
+        const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
+        const auto isInferenceResultFilename = [&]() { return filename.right(inferenceResultFilenameSuffix.length()) == inferenceResultFilenameSuffix; };
+        if (!isMaskFilename() && !isInferenceResultFilename()) {
             columns[0] = filename;
             QTreeWidgetItem* item = new QTreeWidgetItem(files, columns);
             items.append(item);
@@ -348,4 +351,9 @@ QString MainWindow::getMaskFilenameSuffix()
 QString MainWindow::getMaskFilename(const QString& baseImageFilename)
 {
     return baseImageFilename + getMaskFilenameSuffix();
+}
+
+QString MainWindow::getInferenceResultFilenameSuffix()
+{
+    return "_result.png";
 }
