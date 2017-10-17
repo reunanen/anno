@@ -28,6 +28,7 @@ private slots:
     void init();
     void onOpenFolder();
     void onFileClicked(QTreeWidgetItem* item, int column);
+    void onFileActivated(const QModelIndex& index);
     void onToolClicked(QTreeWidgetItem* item, int column);
     void onMarkingRadiusChanged(int i);
     void onMarkingsVisible(bool toggled);
@@ -43,6 +44,8 @@ private:
     void openFolder(const QString& dir);
     void saveMaskIfDirty();
     void saveMask();
+
+    void loadFile(const QString& filename);
 
     static QString getMaskFilenameSuffix();
     static QString getMaskFilename(const QString& baseImageFilename);

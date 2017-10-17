@@ -111,6 +111,7 @@ void MainWindow::createFileList()
     files->setHeaderItem(headerItem);
 
     connect(files, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onFileClicked(QTreeWidgetItem*,int)));
+    connect(files, SIGNAL(activated(const QModelIndex&)), this, SLOT(onFileActivated(const QModelIndex&)));
 }
 
 void MainWindow::createToolList()
@@ -249,17 +250,25 @@ void MainWindow::openFolder(const QString& dir)
 
 void MainWindow::onFileClicked(QTreeWidgetItem* item, int column)
 {
+    loadFile(item->text(column));
+}
+
+void MainWindow::onFileActivated(const QModelIndex& index)
+{
+    loadFile(files->topLevelItem(index.row())->text(0));
+}
+
+void MainWindow::loadFile(const QString& filename)
+{
     saveMaskIfDirty();
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
-    currentImageFile = item->text(column);
-
     const auto readImage = [](const QString& filename) { return QImage(filename); };
 
-    QFuture<QImage> imageFuture = QtConcurrent::run(readImage, currentImageFile);
-    QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(currentImageFile));
+    QFuture<QImage> imageFuture = QtConcurrent::run(readImage, filename);
+    QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(filename));
 
     image->setImageAndMask(imageFuture.result(), maskFuture.result());
 
