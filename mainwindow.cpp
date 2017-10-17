@@ -314,7 +314,12 @@ void MainWindow::loadFile(const QString& filename)
     auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(filename));
 
     image->setImageAndMask(imageFuture.result(), maskFuture.result());
-    image->setResults(resultsFuture.result());
+
+    auto results = resultsFuture.result();
+
+    if (!results.empty()) {
+        image->setResults(results);
+    }
 
     QApplication::restoreOverrideCursor();
 }
