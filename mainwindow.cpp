@@ -230,7 +230,7 @@ void MainWindow::openFolder(const QString& dir)
     const QString maskFilenameSuffix = getMaskFilenameSuffix();
     const QString inferenceResultFilenameSuffix = getInferenceResultFilenameSuffix();
 
-    QDirIterator it(dir, QStringList() << "*.jpg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filename = it.next();
         const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
