@@ -51,6 +51,7 @@ private:
     static QString getMaskFilename(const QString& baseImageFilename);
 
     static QString getInferenceResultFilenameSuffix();
+    static QString getInferenceResultPathFilename(const QString& baseImageFilename);
 
     Ui::MainWindow* ui;
     QTreeWidget* files = nullptr;

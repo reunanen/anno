@@ -16,6 +16,9 @@
 #include <QFuture>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QMessageBox>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <assert.h>
 
 #include "QResultImageView/QResultImageView.h"
@@ -270,7 +273,48 @@ void MainWindow::loadFile(const QString& filename)
     QFuture<QImage> imageFuture = QtConcurrent::run(readImage, filename);
     QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(filename));
 
+    const auto readResults = [](const QString& filename) {
+        QFile file;
+        file.setFileName(filename);
+        file.open(QIODevice::ReadOnly | QIODevice::Text);
+        QString json = file.readAll();
+        QJsonDocument document = QJsonDocument::fromJson(json.toUtf8());
+
+        std::vector<QResultImageView::Result> results;
+
+        const QJsonArray colors = document.array();
+
+        for (int i = 0, end = colors.size(); i < end; ++i) {
+            const QJsonObject colorAndPaths = colors[i].toObject();
+            QResultImageView::Result result;
+            const QJsonObject color = colorAndPaths.value("color").toObject();
+
+            result.pen = QPen(QColor(
+                color.value("r").toInt(),
+                color.value("g").toInt(),
+                color.value("b").toInt()
+            ));
+
+            const QJsonArray paths = colorAndPaths.value("color_paths").toArray();
+            for (int j = 0, end = paths.size(); j < end; ++j) {
+                const QJsonArray path = paths[j].toArray();
+                for (int k = 0, end = path.size(); k < end; ++k) {
+                    const QJsonObject point = path[k].toObject();
+                    result.contour.push_back(QPointF(point.value("x").toDouble(), point.value("y").toDouble()));
+
+                }
+                results.push_back(result);
+                result.contour.clear();
+            }
+        }
+
+        return results;
+    };
+
+    auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(filename));
+
     image->setImageAndMask(imageFuture.result(), maskFuture.result());
+    image->setResults(resultsFuture.result());
 
     QApplication::restoreOverrideCursor();
 }
@@ -365,4 +409,9 @@ QString MainWindow::getMaskFilename(const QString& baseImageFilename)
 QString MainWindow::getInferenceResultFilenameSuffix()
 {
     return "_result.png";
+}
+
+QString MainWindow::getInferenceResultPathFilename(const QString& baseImageFilename)
+{
+    return baseImageFilename + "_result_path.json";
 }
