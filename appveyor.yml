@@ -1,0 +1,9 @@
+init:
+  - set QTDIR=C:\Qt\5.8\msvc2013_64
+  - set PATH=%PATH%;%QTDIR%\bin
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" amd64
+install:
+  - git submodule update --init --recursive
+build_script:
+  - qmake anno.pro
+  - nmake
