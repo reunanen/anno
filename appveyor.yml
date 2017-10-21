@@ -7,3 +7,6 @@ install:
 build_script:
   - qmake anno.pro
   - nmake
+artifacts:
+  - path: release\anno.exe
+    name: anno
