@@ -60,7 +60,8 @@ private:
 
     QTreeWidgetItem* panToolItem = nullptr;
     QTreeWidgetItem* markDefectsToolItem = nullptr;
-    QTreeWidgetItem* eraseToolItem = nullptr;
+    QTreeWidgetItem* markCleanToolItem = nullptr;
+    QTreeWidgetItem* eraseMarkingsToolItem = nullptr;
 
     QSpinBox* markingRadius = nullptr;
     QCheckBox* markingsVisible = nullptr;

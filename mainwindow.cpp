@@ -178,15 +178,21 @@ void MainWindow::createToolList()
     }
 
     {
-        columns[0] = "Mark defect";
+        columns[0] = "Mark clean";
+        markCleanToolItem = new QTreeWidgetItem(tools, columns);
+        items.append(markCleanToolItem);
+    }
+
+    {
+        columns[0] = "Mark defects";
         markDefectsToolItem = new QTreeWidgetItem(tools, columns);
         items.append(markDefectsToolItem);
     }
 
     {
-        columns[0] = "Erase";
-        eraseToolItem = new QTreeWidgetItem(tools, columns);
-        items.append(eraseToolItem);
+        columns[0] = "Erase markings";
+        eraseMarkingsToolItem = new QTreeWidgetItem(tools, columns);
+        items.append(eraseMarkingsToolItem);
     }
 
     tools->insertTopLevelItems(0, items);
@@ -268,10 +274,12 @@ void MainWindow::loadFile(const QString& filename)
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
+    currentImageFile = filename;
+
     const auto readImage = [](const QString& filename) { return QImage(filename); };
 
-    QFuture<QImage> imageFuture = QtConcurrent::run(readImage, filename);
-    QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(filename));
+    QFuture<QImage> imageFuture = QtConcurrent::run(readImage, currentImageFile);
+    QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(currentImageFile));
 
     const auto readResults = [](const QString& filename) {
         QFile file;
@@ -330,10 +338,13 @@ void MainWindow::onToolClicked(QTreeWidgetItem* item, int column)
         image->setLeftMouseMode(QResultImageView::LeftMouseMode::Pan);
     }
     else if (item == markDefectsToolItem) {
-        image->setLeftMouseMode(QResultImageView::LeftMouseMode::Mark);
+        image->setLeftMouseMode(QResultImageView::LeftMouseMode::MarkDefect);
     }
-    else if (item == eraseToolItem) {
-        image->setLeftMouseMode(QResultImageView::LeftMouseMode::Erase);
+    else if (item == markCleanToolItem) {
+        image->setLeftMouseMode(QResultImageView::LeftMouseMode::MarkClean);
+    }
+    else if (item == eraseMarkingsToolItem) {
+        image->setLeftMouseMode(QResultImageView::LeftMouseMode::EraseMarkings);
     }
 }
 
