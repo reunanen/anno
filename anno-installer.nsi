@@ -1,5 +1,4 @@
-# TODO: The version should be set automatically by the build server
-!define VERSION "1.0"
+!define VERSION "$%APPVEYOR_BUILD_VERSION%"
 
 !include "MUI.nsh"
 !include "FileFunc.nsh"
@@ -35,7 +34,7 @@ Section "Main Section" MainSec
 
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "DisplayName" "anno"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "UninstallString" "$\"$INSTDIR\anno-uninstaller.exe$\""
-	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "Publisher" "Tomaattinen Ltd"
+	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "Publisher" "Tomaattinen Ltd (Juha Reunanen)"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "DisplayVersion" "${VERSION}"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "DisplayIcon" "$INSTDIR\bin\anno.exe,0"
 
