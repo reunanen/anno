@@ -76,7 +76,12 @@ void MainWindow::init()
 
     const QSettings settings(companyName, applicationName);
     const QString defaultDirectory = settings.value("defaultDirectory").toString();
-    openFolder(defaultDirectory);
+    if (!defaultDirectory.isEmpty()) {
+        openFolder(defaultDirectory);
+    }
+    else {
+        onOpenFolder();
+    }
 
     restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     restoreState(settings.value("mainWindowState").toByteArray());
@@ -209,7 +214,7 @@ void MainWindow::onOpenFolder()
 {
     QSettings settings(companyName, applicationName);
     const QString defaultDirectory = settings.value("defaultDirectory").toString();
-    const QString dir = QFileDialog::getExistingDirectory(this, tr("Open Folder"), defaultDirectory,
+    const QString dir = QFileDialog::getExistingDirectory(this, tr("Select a folder containing some images"), defaultDirectory,
                                                           QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
     if (!dir.isEmpty()) {
