@@ -2,6 +2,7 @@
 !define VERSION "1.0"
 
 !include "MUI.nsh"
+!include "FileFunc.nsh"
 
 Name "anno"
 OutFile "anno-installer-v${VERSION}.exe"
@@ -36,9 +37,7 @@ Section "Main Section" MainSec
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "UninstallString" "$\"$INSTDIR\anno-uninstaller.exe$\""
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "Publisher" "Tomaattinen Ltd"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "DisplayVersion" "${VERSION}"
-
-	WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "DisplayIcon" "$INSTDIR\bin\anno.exe"
-	WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "EstimatedSize" "20000"
+	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "DisplayIcon" "$INSTDIR\bin\anno.exe,0"
 
 	DetailPrint "Copying files..."
 
@@ -54,6 +53,11 @@ Section "Main Section" MainSec
 
 	CreateShortCut "$SMPROGRAMS\anno.lnk" "$INSTDIR\bin\anno.exe" ""
 	CreateShortCut "$DESKTOP\anno.lnk" "$INSTDIR\bin\anno.exe" ""
+
+	# Estimate installed size
+	${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+	IntFmt $0 "0x%08X" $0
+	WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno" "EstimatedSize" "$0"
 
 SectionEnd
 
