@@ -1,18 +1,13 @@
 init:
   - set QTDIR=C:\Qt\5.8\msvc2013_64
-  - set PATH=%PATH%;%QTDIR%\bin
+  - set PATH=%PATH%;%QTDIR%\bin;C:\Program Files (x86)\NSIS\bin
   - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" amd64
 install:
   - git submodule update --init --recursive
 build_script:
   - qmake anno.pro
   - nmake
-after_build:
-  - 7z a release\anno_dlls.zip %QTDIR%\bin\icu*.dll %QTDIR%\bin\Qt5Core.dll %QTDIR%\bin\Qt5Gui.dll %QTDIR%\bin\Qt5Widgets.dll
-  - 7z a release\anno_dlls.zip %QTDIR%\plugins\imageformats
-  - 7z a release\anno_dlls.zip %QTDIR%\plugins\platforms
+  - makensis anno-installer.nsi
 artifacts:
-  - path: release\anno.exe
-    name: anno
-  - path: release\anno_dlls.zip
-    name: dlls
+  - path: anno-installer-v*.exe
+    name: anno-installer
