@@ -351,6 +351,7 @@ void MainWindow::loadFile(const QString& filename)
     if (resultsVisible->isChecked()) {
         image->setResults(currentResults);
     }
+    resultsVisible->setEnabled(!currentResults.empty());
 
     QApplication::restoreOverrideCursor();
 }
