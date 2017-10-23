@@ -19,6 +19,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QBuffer>
 #include <assert.h>
 
 namespace {
@@ -66,6 +67,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::init()
 {
+    initImageIO();
     createFileList();
     createToolList();
     createImageView();
@@ -83,6 +85,16 @@ void MainWindow::init()
 
     restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     restoreState(settings.value("mainWindowState").toByteArray());
+}
+
+void MainWindow::initImageIO()
+{
+    // see https://stackoverflow.com/a/26809360/19254
+    QImage image(10, 10, QImage::Format_RGB32);
+    QBuffer buffer;
+    buffer.open(QBuffer::WriteOnly);
+    image.save(&buffer, "JPG", 85);
+    buffer.close();
 }
 
 void MainWindow::createImageView()

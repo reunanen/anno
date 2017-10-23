@@ -27,6 +27,7 @@ protected:
 
 private slots:
     void init();
+    void initImageIO();
     void onOpenFolder();
     void onFileClicked(QTreeWidgetItem* item, int column);
     void onFileActivated(const QModelIndex& index);
