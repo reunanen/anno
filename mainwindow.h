@@ -11,7 +11,8 @@ class QTreeWidget;
 class QTreeWidgetItem;
 class QSpinBox;
 class QCheckBox;
-class QResultImageView;
+
+#include "QResultImageView/QResultImageView.h"
 
 class MainWindow : public QMainWindow
 {
@@ -32,6 +33,7 @@ private slots:
     void onToolClicked(QTreeWidgetItem* item, int column);
     void onMarkingRadiusChanged(int i);
     void onMarkingsVisible(bool toggled);
+    void onResultsVisible(bool toggled);
     void onMaskUpdated();
     void onPostponeMaskUpdate();
     void onSaveMask();
@@ -65,8 +67,10 @@ private:
 
     QSpinBox* markingRadius = nullptr;
     QCheckBox* markingsVisible = nullptr;
+    QCheckBox* resultsVisible = nullptr;
 
     QString currentImageFile;
+    std::vector<QResultImageView::Result> currentResults;
 
     bool maskDirty = false;
     int saveMaskPendingCounter = 0;

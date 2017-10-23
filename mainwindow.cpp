@@ -21,8 +21,6 @@
 #include <QJsonObject>
 #include <assert.h>
 
-#include "QResultImageView/QResultImageView.h"
-
 namespace {
     const char* companyName = "Tomaattinen";
     const char* applicationName = "anno";
@@ -157,6 +155,11 @@ void MainWindow::createToolList()
 
         connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
 
+        resultsVisible = new QCheckBox("Results visible", this);
+        resultsVisible->setChecked(true);
+
+        connect(resultsVisible, SIGNAL(toggled(bool)), this, SLOT(onResultsVisible(bool)));
+
         QHBoxLayout* markingRadiusLayout = new QHBoxLayout(markingRadiusWidget);
         markingRadiusLayout->addWidget(new QLabel(tr("Marking radius"), this));
         markingRadiusLayout->addWidget(markingRadius);
@@ -208,6 +211,7 @@ void MainWindow::createToolList()
     layout->addWidget(markingsVisible);
     layout->addWidget(markingRadiusWidget);
     layout->addWidget(tools);
+    layout->addWidget(resultsVisible);
 }
 
 void MainWindow::onOpenFolder()
@@ -327,7 +331,11 @@ void MainWindow::loadFile(const QString& filename)
     auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(filename));
 
     image->setImageAndMask(imageFuture.result(), maskFuture.result());
-    image->setResults(resultsFuture.result());
+
+    currentResults = resultsFuture.result();
+    if (resultsVisible->isChecked()) {
+        image->setResults(currentResults);
+    }
 
     QApplication::restoreOverrideCursor();
 }
@@ -356,6 +364,17 @@ void MainWindow::onMarkingRadiusChanged(int i)
 void MainWindow::onMarkingsVisible(bool toggled)
 {
     image->setMaskVisible(toggled);
+}
+
+void MainWindow::onResultsVisible(bool toggled)
+{
+    if (toggled) {
+        image->setResults(currentResults);
+    }
+    else {
+        std::vector<QResultImageView::Result> emptyResults;
+        image->setResults(emptyResults);
+    }
 }
 
 void MainWindow::onMaskUpdated()
