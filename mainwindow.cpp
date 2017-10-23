@@ -291,13 +291,16 @@ void MainWindow::loadFile(const QString& filename)
     QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(currentImageFile));
 
     const auto readResults = [](const QString& filename) {
+        std::vector<QResultImageView::Result> results;
+
         QFile file;
         file.setFileName(filename);
-        file.open(QIODevice::ReadOnly | QIODevice::Text);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            return results;
+        }
+
         QString json = file.readAll();
         QJsonDocument document = QJsonDocument::fromJson(json.toUtf8());
-
-        std::vector<QResultImageView::Result> results;
 
         const QJsonArray colors = document.array();
 
