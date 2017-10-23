@@ -192,7 +192,7 @@ void MainWindow::createToolList()
     }
 
     {
-        columns[0] = "Mark defects";
+        columns[0] = settings.value("markDefectsLabel", "Mark defects").toString();
         markDefectsToolItem = new QTreeWidgetItem(tools, columns);
         items.append(markDefectsToolItem);
     }
