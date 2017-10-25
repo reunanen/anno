@@ -379,11 +379,15 @@ void MainWindow::onMarkingRadiusChanged(int i)
 
 void MainWindow::onMarkingsVisible(bool toggled)
 {
+    onPostponeMaskUpdate();
+
     image->setMaskVisible(toggled);
 }
 
 void MainWindow::onResultsVisible(bool toggled)
 {
+    onPostponeMaskUpdate();
+
     if (toggled) {
         image->setResults(currentResults);
     }
