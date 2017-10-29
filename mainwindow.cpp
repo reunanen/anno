@@ -10,9 +10,12 @@
 #include <QDockWidget>
 #include <QSpinBox>
 #include <QCheckBox>
+#include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QInputDialog>
+#include <QColorDialog>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QMessageBox>
@@ -177,6 +180,19 @@ void MainWindow::createToolList()
         markingRadiusLayout->addWidget(markingRadius);
     }
 
+    QWidget* classButtonsWidget = new QWidget(this);
+    {
+        addClassButton = new QPushButton(tr("Add class"), this);
+        connect(addClassButton, SIGNAL(clicked()), this, SLOT(onAddClass()));
+
+        removeClassButton = new QPushButton(tr("Remove class"), this);
+        connect(removeClassButton, SIGNAL(clicked()), this, SLOT(onRemoveClass()));
+
+        QHBoxLayout* classButtonsLayout = new QHBoxLayout(classButtonsWidget);
+        classButtonsLayout->addWidget(addClassButton);
+        classButtonsLayout->addWidget(removeClassButton);
+    }
+
     tools = new QTreeWidget(this);
 
     tools->setColumnCount(1);
@@ -222,6 +238,7 @@ void MainWindow::createToolList()
 
     layout->addWidget(markingsVisible);
     layout->addWidget(markingRadiusWidget);
+    layout->addWidget(classButtonsWidget);
     layout->addWidget(tools);
     layout->addWidget(resultsVisible);
 }
@@ -469,4 +486,27 @@ QString MainWindow::getInferenceResultFilenameSuffix()
 QString MainWindow::getInferenceResultPathFilename(const QString& baseImageFilename)
 {
     return baseImageFilename + "_result_path.json";
+}
+
+void MainWindow::onAddClass()
+{
+    bool ok = false;
+    QString newClass = QInputDialog::getText(this, tr("New class"), tr("Enter the name of the new class"), QLineEdit::Normal, QString(), &ok);
+
+    if (ok) {
+        if (newClass.isEmpty()) {
+            QMessageBox::critical(this, tr("Error"), tr("The class name cannot be empty."));
+        }
+        else {
+            const QColor color = QColorDialog::getColor(Qt::white, this, tr("Pick the color of the new class '%1'").arg(newClass), QColorDialog::ShowAlphaChannel);
+            if (color.isValid()) {
+
+            }
+        }
+    }
+}
+
+void MainWindow::onRemoveClass()
+{
+
 }

@@ -11,6 +11,7 @@ class QTreeWidget;
 class QTreeWidgetItem;
 class QSpinBox;
 class QCheckBox;
+class QPushButton;
 
 #include "QResultImageView/QResultImageView.h"
 
@@ -38,6 +39,8 @@ private slots:
     void onMaskUpdated();
     void onPostponeMaskUpdate();
     void onSaveMask();
+    void onAddClass();
+    void onRemoveClass();
 
 private:
     void createFileList();
@@ -68,6 +71,8 @@ private:
 
     QSpinBox* markingRadius = nullptr;
     QCheckBox* markingsVisible = nullptr;
+    QPushButton* addClassButton = nullptr;
+    QPushButton* removeClassButton = nullptr;
     QCheckBox* resultsVisible = nullptr;
 
     QString currentImageFile;
