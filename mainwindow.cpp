@@ -373,7 +373,7 @@ void MainWindow::loadFile(const QString& filename)
     QApplication::restoreOverrideCursor();
 }
 
-void MainWindow::onToolClicked(QTreeWidgetItem* item, int column)
+void MainWindow::onToolClicked(QTreeWidgetItem* item, int /*column*/)
 {
     if (item == panToolItem) {
         image->setLeftMouseMode(QResultImageView::LeftMouseMode::Pan);
@@ -500,7 +500,7 @@ void MainWindow::onAddClass()
         else {
             const QColor color = QColorDialog::getColor(Qt::white, this, tr("Pick the color of the new class '%1'").arg(newClass), QColorDialog::ShowAlphaChannel);
             if (color.isValid()) {
-
+                addNewClass(newClass, color);
             }
         }
     }
@@ -509,4 +509,30 @@ void MainWindow::onAddClass()
 void MainWindow::onRemoveClass()
 {
 
+}
+
+void MainWindow::addNewClass(const QString& className, QColor color)
+{
+    QStringList columns;
+    columns.append(tr("Mark '%1'").arg(className));
+
+    ClassItem classItem;
+    classItem.className = className;
+    classItem.color = color;
+    classItem.markToolItem = new QTreeWidgetItem(tools, columns);
+
+    classItem.markToolItem->setBackgroundColor(0, color);
+
+    const QColor hslColor = color.toHsl();
+
+    if (hslColor.lightness() < 128) {
+        classItem.markToolItem->setTextColor(0, Qt::white);
+    }
+
+    QList<QTreeWidgetItem *> items;
+    items.append(classItem.markToolItem);
+
+    tools->insertTopLevelItems(tools->topLevelItemCount() - 2, items);
+
+    markClassToolItems.push_back(classItem);
 }

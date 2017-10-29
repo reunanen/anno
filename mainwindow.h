@@ -59,15 +59,25 @@ private:
     static QString getInferenceResultFilenameSuffix();
     static QString getInferenceResultPathFilename(const QString& baseImageFilename);
 
+    void addNewClass(const QString& className, QColor color);
+
     Ui::MainWindow* ui;
     QTreeWidget* files = nullptr;
     QTreeWidget* tools = nullptr;
     QResultImageView* image = nullptr;
 
+    struct ClassItem {
+        QString className;
+        QColor color;
+        QTreeWidgetItem* markToolItem = nullptr;
+    };
+
     QTreeWidgetItem* panToolItem = nullptr;
     QTreeWidgetItem* markDefectsToolItem = nullptr;
     QTreeWidgetItem* markCleanToolItem = nullptr;
     QTreeWidgetItem* eraseMarkingsToolItem = nullptr;
+
+    std::vector<ClassItem> markClassToolItems;
 
     QSpinBox* markingRadius = nullptr;
     QCheckBox* markingsVisible = nullptr;
