@@ -7,10 +7,11 @@ namespace Ui {
 class MainWindow;
 }
 
-class QTreeWidget;
-class QTreeWidgetItem;
+class QListWidget;
+class QListWidgetItem;
 class QSpinBox;
 class QCheckBox;
+class QRadioButton;
 class QPushButton;
 
 #include "QResultImageView/QResultImageView.h"
@@ -24,15 +25,19 @@ public:
     ~MainWindow();
 
 protected:
-    void closeEvent(QCloseEvent *event);
+    void closeEvent(QCloseEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
     void init();
     void initImageIO();
     void onOpenFolder();
-    void onFileClicked(QTreeWidgetItem* item, int column);
+    void onFileClicked(QListWidgetItem* item);
     void onFileActivated(const QModelIndex& index);
-    void onToolClicked(QTreeWidgetItem* item, int column);
+    void onPanButtonToggled(bool toggled);
+    void onAnnotateButtonToggled(bool toggled);
+    void onEraseAnnotationsButtonToggled(bool toggled);
+    void onAnnotationClassClicked(QListWidgetItem* item);
     void onMarkingRadiusChanged(int i);
     void onMarkingsVisible(bool toggled);
     void onResultsVisible(bool toggled);
@@ -40,6 +45,7 @@ private slots:
     void onPostponeMaskUpdate();
     void onSaveMask();
     void onAddClass();
+    void onRenameClass();
     void onRemoveClass();
 
 private:
@@ -61,30 +67,37 @@ private:
 
     void addNewClass(const QString& className, QColor color);
 
+    void loadClassList();
+    void saveClassList() const;
+
     Ui::MainWindow* ui;
-    QTreeWidget* files = nullptr;
-    QTreeWidget* tools = nullptr;
+    QListWidget* files = nullptr;
     QResultImageView* image = nullptr;
 
     struct ClassItem {
         QString className;
         QColor color;
-        QTreeWidgetItem* markToolItem = nullptr;
+        QListWidgetItem* listWidgetItem = nullptr;
     };
 
-    QTreeWidgetItem* panToolItem = nullptr;
-    QTreeWidgetItem* markDefectsToolItem = nullptr;
-    QTreeWidgetItem* markCleanToolItem = nullptr;
-    QTreeWidgetItem* eraseMarkingsToolItem = nullptr;
+    QRadioButton* panButton = nullptr;
+    QRadioButton* annotateButton = nullptr;
+    QRadioButton* eraseAnnotationsButton = nullptr;
 
-    std::vector<ClassItem> markClassToolItems;
+    QListWidget* annotationClasses = nullptr;
+    QListWidgetItem* currentlySelectedAnnotationClassItem = nullptr;
+    QColor currentAnnotationColor = Qt::transparent;
+
+    std::vector<ClassItem> annotationClassItems;
 
     QSpinBox* markingRadius = nullptr;
     QCheckBox* markingsVisible = nullptr;
     QPushButton* addClassButton = nullptr;
+    QPushButton* renameClassButton = nullptr;
     QPushButton* removeClassButton = nullptr;
     QCheckBox* resultsVisible = nullptr;
 
+    QString currentWorkingFolder;
     QString currentImageFile;
     std::vector<QResultImageView::Result> currentResults;
 

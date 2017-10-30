@@ -3,14 +3,16 @@
 
 #include <QSettings>
 #include <QTimer>
-#include <QTreeWidget>
+#include <QListWidget>
 #include <QPainter>
 #include <QFileDialog>
 #include <QDirIterator>
 #include <QDockWidget>
 #include <QSpinBox>
 #include <QCheckBox>
+#include <QGroupBox>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -23,6 +25,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QBuffer>
+#include <QKeyEvent>
 #include <assert.h>
 
 namespace {
@@ -71,8 +74,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::init()
 {
     initImageIO();
-    createFileList();
     createToolList();
+    createFileList();
     createImageView();
 
     image->setMarkingRadius(markingRadius->value());
@@ -88,6 +91,8 @@ void MainWindow::init()
 
     restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     restoreState(settings.value("mainWindowState").toByteArray());
+
+    setFocusPolicy(Qt::StrongFocus);
 }
 
 void MainWindow::initImageIO()
@@ -116,22 +121,20 @@ void MainWindow::createFileList()
     QDockWidget* fileListDockWidget = new QDockWidget(tr("Files"), this);
     fileListDockWidget->setObjectName("Files");
 
-    files = new QTreeWidget(this);
+    files = new QListWidget(this);
 
     fileListDockWidget->setWidget(files);
     addDockWidget(Qt::LeftDockWidgetArea, fileListDockWidget);
 
-    files->setColumnCount(1);
     files->setFont(QFont("Arial", 8, 0));
 
     QStringList columns;
     columns.append(tr("Name"));
 
-    QTreeWidgetItem* headerItem = new QTreeWidgetItem(columns);
-    headerItem->setTextAlignment(0, Qt::AlignLeft);
-    files->setHeaderItem(headerItem);
+    QListWidgetItem* headerItem = new QListWidgetItem(files);
+    headerItem->setTextAlignment(Qt::AlignLeft);
 
-    connect(files, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onFileClicked(QTreeWidgetItem*,int)));
+    connect(files, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onFileClicked(QListWidgetItem*)));
     connect(files, SIGNAL(activated(const QModelIndex&)), this, SLOT(onFileActivated(const QModelIndex&)));
 }
 
@@ -150,6 +153,13 @@ void MainWindow::createToolList()
     QVBoxLayout* layout = new QVBoxLayout(widget);
     layout->setSpacing(0);
 
+    {
+        markingsVisible = new QCheckBox("Annotations &visible", this);
+        markingsVisible->setChecked(true);
+
+        connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
+    }
+
     bool radiusOk = false;
     int radius = settings.value("markingRadius").toInt(&radiusOk);
     if (!radiusOk) {
@@ -165,81 +175,66 @@ void MainWindow::createToolList()
 
         connect(markingRadius, SIGNAL(valueChanged(int)), this, SLOT(onMarkingRadiusChanged(int)));
 
-        markingsVisible = new QCheckBox("Markings visible", this);
-        markingsVisible->setChecked(true);
-
-        connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
-
-        resultsVisible = new QCheckBox("Results visible", this);
-        resultsVisible->setChecked(true);
-
-        connect(resultsVisible, SIGNAL(toggled(bool)), this, SLOT(onResultsVisible(bool)));
-
         QHBoxLayout* markingRadiusLayout = new QHBoxLayout(markingRadiusWidget);
-        markingRadiusLayout->addWidget(new QLabel(tr("Marking radius"), this));
+        markingRadiusLayout->addWidget(new QLabel(tr("Annotation radius"), this));
         markingRadiusLayout->addWidget(markingRadius);
     }
 
     QWidget* classButtonsWidget = new QWidget(this);
     {
-        addClassButton = new QPushButton(tr("Add class"), this);
+        addClassButton = new QPushButton(tr("Add new class ..."), this);
         connect(addClassButton, SIGNAL(clicked()), this, SLOT(onAddClass()));
 
-        removeClassButton = new QPushButton(tr("Remove class"), this);
+        renameClassButton = new QPushButton(tr("Rename selected class ..."), this);
+        connect(renameClassButton, SIGNAL(clicked()), this, SLOT(onRenameClass()));
+
+        removeClassButton = new QPushButton(tr("Remove selected class"), this);
         connect(removeClassButton, SIGNAL(clicked()), this, SLOT(onRemoveClass()));
 
-        QHBoxLayout* classButtonsLayout = new QHBoxLayout(classButtonsWidget);
+        QVBoxLayout* classButtonsLayout = new QVBoxLayout(classButtonsWidget);
         classButtonsLayout->addWidget(addClassButton);
+        classButtonsLayout->addWidget(renameClassButton);
         classButtonsLayout->addWidget(removeClassButton);
     }
 
-    tools = new QTreeWidget(this);
-
-    tools->setColumnCount(1);
-    tools->setFont(QFont("Arial", 10, 0));
-
-    QStringList columns;
-    columns.append(tr(""));
-
-    QTreeWidgetItem* headerItem = new QTreeWidgetItem(columns);
-    headerItem->setTextAlignment(0, Qt::AlignLeft);
-    tools->setHeaderItem(headerItem);
-
-    QList<QTreeWidgetItem *> items;
-
+    QGroupBox* leftMouseButtonActions = new QGroupBox(tr("Left mouse button actions"));
     {
-        columns[0] = "Pan";
-        panToolItem = new QTreeWidgetItem(tools, columns);
-        items.append(panToolItem);
+        QVBoxLayout* leftMouseButtonActionsLayout = new QVBoxLayout;
+
+        panButton = new QRadioButton(tr("&Pan"));
+        annotateButton = new QRadioButton(tr("&Annotate"));
+        eraseAnnotationsButton = new QRadioButton(tr("&Erase annotations"));
+
+        annotationClasses = new QListWidget(this);
+        annotationClasses->setFont(QFont("Arial", 10, 0));
+
+        panButton->setChecked(true);
+
+        leftMouseButtonActionsLayout->addWidget(panButton);
+        leftMouseButtonActionsLayout->addWidget(annotateButton);
+        leftMouseButtonActionsLayout->addWidget(annotationClasses);
+        leftMouseButtonActionsLayout->addWidget(classButtonsWidget);
+        leftMouseButtonActionsLayout->addWidget(eraseAnnotationsButton);
+
+        connect(panButton, SIGNAL(toggled(bool)), this, SLOT(onPanButtonToggled(bool)));
+        connect(eraseAnnotationsButton, SIGNAL(toggled(bool)), this, SLOT(onEraseAnnotationsButtonToggled(bool)));
+        connect(annotateButton, SIGNAL(toggled(bool)), this, SLOT(onAnnotateButtonToggled(bool)));
+        connect(annotationClasses, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onAnnotationClassClicked(QListWidgetItem*)));
+
+        leftMouseButtonActions->setLayout(leftMouseButtonActionsLayout);
     }
 
     {
-        columns[0] = "Mark clean";
-        markCleanToolItem = new QTreeWidgetItem(tools, columns);
-        items.append(markCleanToolItem);
+        resultsVisible = new QCheckBox("&Results visible", this);
+        resultsVisible->setChecked(true);
+
+        connect(resultsVisible, SIGNAL(toggled(bool)), this, SLOT(onResultsVisible(bool)));
     }
-
-    {
-        columns[0] = settings.value("markDefectsLabel", "Mark defects").toString();
-        markDefectsToolItem = new QTreeWidgetItem(tools, columns);
-        items.append(markDefectsToolItem);
-    }
-
-    {
-        columns[0] = "Erase markings";
-        eraseMarkingsToolItem = new QTreeWidgetItem(tools, columns);
-        items.append(eraseMarkingsToolItem);
-    }
-
-    tools->insertTopLevelItems(0, items);
-    panToolItem->setSelected(true);
-
-    connect(tools, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(onToolClicked(QTreeWidgetItem*,int)));
 
     layout->addWidget(markingsVisible);
     layout->addWidget(markingRadiusWidget);
-    layout->addWidget(classButtonsWidget);
-    layout->addWidget(tools);
+    layout->addWidget(leftMouseButtonActions);
+    layout->addSpacing(10);
     layout->addWidget(resultsVisible);
 }
 
@@ -265,13 +260,6 @@ void MainWindow::openFolder(const QString& dir)
 
     files->clear();
 
-    QList<QTreeWidgetItem *> items;
-
-    QStringList columns;
-    while (columns.count() < files->columnCount()) {
-        columns.append("");
-    }
-
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
@@ -284,25 +272,38 @@ void MainWindow::openFolder(const QString& dir)
         const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
         const auto isInferenceResultFilename = [&]() { return filename.right(inferenceResultFilenameSuffix.length()) == inferenceResultFilenameSuffix; };
         if (!isMaskFilename() && !isInferenceResultFilename()) {
-            columns[0] = filename;
-            QTreeWidgetItem* item = new QTreeWidgetItem(files, columns);
-            items.append(item);
+            QListWidgetItem* item = new QListWidgetItem(filename, files);
+            QFileInfo maskFileInfo(getMaskFilename(filename));
+            if (maskFileInfo.exists() && maskFileInfo.isFile()) {
+                item->setTextColor(Qt::black);
+            }
+            else {
+                item->setTextColor(Qt::gray);
+            }
         }
     }
 
-    files->insertTopLevelItems(0, items);
+    currentWorkingFolder = dir;
+
+    loadClassList();
+
+    if (annotationClassItems.empty()) {
+        // Add sample classes
+        addNewClass("Clean", QColor(0, 255, 0, 64));
+        addNewClass("Defect", QColor(255, 0, 0, 128));
+    }
 
     QApplication::restoreOverrideCursor();
 }
 
-void MainWindow::onFileClicked(QTreeWidgetItem* item, int column)
+void MainWindow::onFileClicked(QListWidgetItem* item)
 {
-    loadFile(item->text(column));
+    loadFile(item->text());
 }
 
 void MainWindow::onFileActivated(const QModelIndex& index)
 {
-    loadFile(files->topLevelItem(index.row())->text(0));
+    loadFile(files->item(index.row())->text());
 }
 
 void MainWindow::loadFile(const QString& filename)
@@ -373,20 +374,53 @@ void MainWindow::loadFile(const QString& filename)
     QApplication::restoreOverrideCursor();
 }
 
-void MainWindow::onToolClicked(QTreeWidgetItem* item, int /*column*/)
+void MainWindow::onPanButtonToggled(bool toggled)
 {
-    if (item == panToolItem) {
+    if (toggled) {
         image->setLeftMouseMode(QResultImageView::LeftMouseMode::Pan);
     }
-    else if (item == markDefectsToolItem) {
-        image->setLeftMouseMode(QResultImageView::LeftMouseMode::MarkDefect);
+}
+
+void MainWindow::onAnnotateButtonToggled(bool toggled)
+{
+    if (toggled) {
+        if (annotationClasses->count() == 0) {
+            QMessageBox::warning(this, tr("Error"), tr("Add a class first"));
+        }
+        else {
+            if (currentlySelectedAnnotationClassItem == nullptr) {
+                QListWidgetItem* firstItem = annotationClasses->item(0);
+                firstItem->setSelected(true);
+                onAnnotationClassClicked(firstItem);
+            }
+
+            image->setLeftMouseMode(QResultImageView::LeftMouseMode::Annotate);
+        }
     }
-    else if (item == markCleanToolItem) {
-        image->setLeftMouseMode(QResultImageView::LeftMouseMode::MarkClean);
+}
+
+void MainWindow::onEraseAnnotationsButtonToggled(bool toggled)
+{
+    if (toggled) {
+        image->setLeftMouseMode(QResultImageView::LeftMouseMode::EraseAnnotations);
     }
-    else if (item == eraseMarkingsToolItem) {
-        image->setLeftMouseMode(QResultImageView::LeftMouseMode::EraseMarkings);
+}
+
+void MainWindow::onAnnotationClassClicked(QListWidgetItem* item)
+{
+    annotateButton->setChecked(true);
+
+    for (const ClassItem& classItem : annotationClassItems) {
+        if (item == classItem.listWidgetItem) {
+            currentlySelectedAnnotationClassItem = item;
+            currentAnnotationColor = classItem.color;
+            image->setAnnotationColor(currentAnnotationColor);
+            return;
+        }
     }
+
+    panButton->setChecked(true);
+    QMessageBox::warning(this, tr("Error"), tr("No annotation class item found"));
 }
 
 void MainWindow::onMarkingRadiusChanged(int i)
@@ -490,49 +524,204 @@ QString MainWindow::getInferenceResultPathFilename(const QString& baseImageFilen
 
 void MainWindow::onAddClass()
 {
+    if (currentWorkingFolder.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Open some folder first");
+        return;
+    }
+
     bool ok = false;
-    QString newClass = QInputDialog::getText(this, tr("New class"), tr("Enter the name of the new class"), QLineEdit::Normal, QString(), &ok);
+    QString newClass = QInputDialog::getText(this, tr("Add new class"), tr("Enter the name of the new class"), QLineEdit::Normal, QString(), &ok);
 
     if (ok) {
         if (newClass.isEmpty()) {
             QMessageBox::critical(this, tr("Error"), tr("The class name cannot be empty."));
         }
         else {
-            const QColor color = QColorDialog::getColor(Qt::white, this, tr("Pick the color of the new class '%1'").arg(newClass), QColorDialog::ShowAlphaChannel);
+            const QColor color = QColorDialog::getColor(Qt::white, this, tr("Pick the color of the new class \"%1\"").arg(newClass), QColorDialog::ShowAlphaChannel);
             if (color.isValid()) {
                 addNewClass(newClass, color);
+                saveClassList();
             }
         }
     }
 }
 
+void MainWindow::onRenameClass()
+{
+    if (currentWorkingFolder.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Open some folder first");
+        return;
+    }
+
+    if (currentlySelectedAnnotationClassItem == nullptr) {
+        QMessageBox::warning(this, "Error", "No class selected");
+    }
+
+    int row = 0, rowCount = annotationClasses->count();
+    for (auto i = annotationClassItems.begin(), end = annotationClassItems.end(); i != end && row < rowCount; ++i, ++row) {
+        ClassItem& classItem = *i;
+        if (currentlySelectedAnnotationClassItem == classItem.listWidgetItem) {
+            bool ok = false;
+            const QString newName = QInputDialog::getText(this, tr("Enter new name"),
+                                                          tr("Please enter a new name for class \"%1\":").arg(classItem.className),
+                                                          QLineEdit::Normal, classItem.className, &ok);
+            if (ok) {
+                if (newName.isEmpty()) {
+                    QMessageBox::critical(this, tr("Error"), tr("The class name cannot be empty."));
+                }
+                else {
+                    annotationClasses->item(row)->setText(newName);
+                    classItem.className = newName;
+                    saveClassList();
+                }
+            }
+            return;
+        }
+    }
+
+    panButton->setChecked(true);
+    QMessageBox::warning(this, tr("Error"), tr("No annotation class item found"));
+}
+
 void MainWindow::onRemoveClass()
 {
+    if (currentWorkingFolder.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Open some folder first");
+        return;
+    }
 
+    if (currentlySelectedAnnotationClassItem == nullptr) {
+        QMessageBox::warning(this, "Error", "No class selected");
+    }
+
+    int row = 0, rowCount = annotationClasses->count();
+    for (auto i = annotationClassItems.begin(), end = annotationClassItems.end(); i != end && row < rowCount; ++i, ++row) {
+        const ClassItem& classItem = *i;
+        if (currentlySelectedAnnotationClassItem == classItem.listWidgetItem) {
+            if (QMessageBox::question(this, tr("Please confirm"), tr("Are you sure you want to remove class \"%1\"?").arg(classItem.className)) == QMessageBox::Yes) {
+                annotationClasses->takeItem(row);
+                annotationClassItems.erase(i);
+                saveClassList();
+            }
+            return;
+        }
+    }
+
+    panButton->setChecked(true);
+    QMessageBox::warning(this, tr("Error"), tr("No annotation class item found"));
 }
 
 void MainWindow::addNewClass(const QString& className, QColor color)
 {
     QStringList columns;
-    columns.append(tr("Mark '%1'").arg(className));
+    columns.append(className);
 
     ClassItem classItem;
     classItem.className = className;
     classItem.color = color;
-    classItem.markToolItem = new QTreeWidgetItem(tools, columns);
-
-    classItem.markToolItem->setBackgroundColor(0, color);
+    classItem.listWidgetItem = new QListWidgetItem(className, annotationClasses);
+    classItem.listWidgetItem->setBackgroundColor(color);
 
     const QColor hslColor = color.toHsl();
 
     if (hslColor.lightness() < 128) {
-        classItem.markToolItem->setTextColor(0, Qt::white);
+        classItem.listWidgetItem->setTextColor(Qt::white);
     }
 
-    QList<QTreeWidgetItem *> items;
-    items.append(classItem.markToolItem);
+    if (annotationClassItems.empty()) {
+        classItem.listWidgetItem->setSelected(true);
+    }
 
-    tools->insertTopLevelItems(tools->topLevelItemCount() - 2, items);
+    annotationClassItems.push_back(classItem);
+}
 
-    markClassToolItems.push_back(classItem);
+QString getClassListFilename(const QString& currentWorkingFolder)
+{
+    return currentWorkingFolder + "/anno_classes.json";
+}
+
+void MainWindow::loadClassList()
+{
+    const QString filename = getClassListFilename(currentWorkingFolder);
+    QFile file(filename);
+
+    if (file.open(QIODevice::ReadOnly)) {
+
+        annotationClasses->clear();
+        annotationClassItems.clear();
+
+        const QJsonDocument doc(QJsonDocument::fromJson(file.readAll()));
+        const QJsonArray classArray = doc.object()["anno_classes"].toArray();
+        const int classCount = classArray.size();
+        for (int i = 0; i < classCount; ++i) {
+            const QJsonObject classObject = classArray[i].toObject();
+            const QJsonObject colorObject = classObject["color"].toObject();
+            const QString name = classObject["name"].toString();
+            const QColor color(
+                colorObject["red"].toInt(),
+                colorObject["green"].toInt(),
+                colorObject["blue"].toInt(),
+                colorObject["alpha"].toInt()
+            );
+            addNewClass(name, color);
+        }
+    }
+}
+
+void MainWindow::saveClassList() const
+{
+    QJsonObject json;
+
+    {
+        QJsonArray classArray;
+        for (const ClassItem& classItem : annotationClassItems) {
+            QJsonObject classObject;
+            classObject["name"] = classItem.className;
+            QJsonObject colorObject;
+            colorObject["red"] = classItem.color.red();
+            colorObject["green"] = classItem.color.green();
+            colorObject["blue"] = classItem.color.blue();
+            colorObject["alpha"] = classItem.color.alpha();
+            classObject["color"] = colorObject;
+            classArray.append(classObject);
+        }
+        json["anno_classes"] = classArray;
+    }
+
+    const QString filename = getClassListFilename(currentWorkingFolder);
+    QFile file(filename);
+
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(json).toJson());
+    }
+    else {
+        const QString text = tr("Couldn't open file \"%1\" for writing").arg(filename);
+        QMessageBox::warning(nullptr, tr("Error"), text);
+    }
+}
+
+void MainWindow::keyPressEvent(QKeyEvent* event)
+{
+    const int key = event->key();
+    if (key == Qt::Key_Space) {
+        markingsVisible->toggle();
+        resultsVisible->toggle();
+    }
+    else if (key == Qt::Key_Escape || key == Qt::Key_P) {
+        panButton->setChecked(true);
+    }
+    else if (key == Qt::Key_A) {
+        annotateButton->setChecked(true);
+    }
+    else if (key == Qt::Key_E) {
+        eraseAnnotationsButton->setChecked(true);
+    }
+    else if (key >= Qt::Key_0 && key <= Qt::Key_9) {
+        int index = key - Qt::Key_0;
+        if (index >= 0 && index < annotationClassItems.size()) {
+            QListWidgetItem* itemToSelect = annotationClassItems[index].listWidgetItem;
+            itemToSelect->setSelected(true);
+            onAnnotationClassClicked(itemToSelect);
+        }
+    }
 }
