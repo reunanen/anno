@@ -724,4 +724,10 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
             onAnnotationClassClicked(itemToSelect);
         }
     }
+    else if (key == Qt::Key_V) {
+        markingsVisible->toggle();
+    }
+    else if (key == Qt::Key_R) {
+        resultsVisible->toggle();
+    }
 }
