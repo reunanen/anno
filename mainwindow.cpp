@@ -259,6 +259,7 @@ void MainWindow::openFolder(const QString& dir)
     }
 
     files->clear();
+    currentImageFileItem = nullptr;
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
@@ -298,22 +299,23 @@ void MainWindow::openFolder(const QString& dir)
 
 void MainWindow::onFileClicked(QListWidgetItem* item)
 {
-    loadFile(item->text());
+    loadFile(item);
 }
 
 void MainWindow::onFileActivated(const QModelIndex& index)
 {
-    loadFile(files->item(index.row())->text());
+    loadFile(files->item(index.row()));
 }
 
-void MainWindow::loadFile(const QString& filename)
+void MainWindow::loadFile(QListWidgetItem* item)
 {
     saveMaskIfDirty();
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
-    currentImageFile = filename;
+    currentImageFileItem = item;
+    currentImageFile = item->text();
 
     const auto readImage = [](const QString& filename) { return QImage(filename); };
 
@@ -361,7 +363,7 @@ void MainWindow::loadFile(const QString& filename)
         return results;
     };
 
-    auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(filename));
+    auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(currentImageFile));
 
     image->setImageAndMask(imageFuture.result(), maskFuture.result());
 
@@ -455,6 +457,10 @@ void MainWindow::onMaskUpdated()
     ++saveMaskPendingCounter;
 
     QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+
+    if (currentImageFileItem != nullptr) {
+        currentImageFileItem->setTextColor(Qt::black); // now we will have a mask file
+    }
 }
 
 void MainWindow::onPostponeMaskUpdate()

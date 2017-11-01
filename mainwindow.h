@@ -57,7 +57,7 @@ private:
     void saveMaskIfDirty();
     void saveMask();
 
-    void loadFile(const QString& filename);
+    void loadFile(QListWidgetItem* item);
 
     static QString getMaskFilenameSuffix();
     static QString getMaskFilename(const QString& baseImageFilename);
@@ -98,6 +98,7 @@ private:
     QCheckBox* resultsVisible = nullptr;
 
     QString currentWorkingFolder;
+    QListWidgetItem* currentImageFileItem = nullptr;
     QString currentImageFile;
     std::vector<QResultImageView::Result> currentResults;
 
