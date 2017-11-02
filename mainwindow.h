@@ -100,7 +100,14 @@ private:
     QString currentWorkingFolder;
     QListWidgetItem* currentImageFileItem = nullptr;
     QString currentImageFile;
-    std::vector<QResultImageView::Result> currentResults;
+
+    struct InferenceResults
+    {
+        std::vector<QResultImageView::Result> results;
+        QString error;
+    };
+
+    InferenceResults currentResults;
 
     bool maskDirty = false;
     int saveMaskPendingCounter = 0;

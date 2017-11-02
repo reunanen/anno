@@ -323,11 +323,16 @@ void MainWindow::loadFile(QListWidgetItem* item)
     QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(currentImageFile));
 
     const auto readResults = [](const QString& filename) {
-        std::vector<QResultImageView::Result> results;
+        InferenceResults results;
 
         QFile file;
         file.setFileName(filename);
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            return results;
+        }
+
+        if (file.size() > 100e6) {
+            results.error = tr("The inference results JSON file is insanely large, so we're really not even trying to parse it.\n\nFor your reference, the file is:\n%1").arg(filename);
             return results;
         }
 
@@ -355,7 +360,7 @@ void MainWindow::loadFile(QListWidgetItem* item)
                     result.contour.push_back(QPointF(point.value("x").toDouble(), point.value("y").toDouble()));
 
                 }
-                results.push_back(result);
+                results.results.push_back(result);
                 result.contour.clear();
             }
         }
@@ -368,10 +373,15 @@ void MainWindow::loadFile(QListWidgetItem* item)
     image->setImageAndMask(imageFuture.result(), maskFuture.result());
 
     currentResults = resultsFuture.result();
-    if (resultsVisible->isChecked()) {
-        image->setResults(currentResults);
+
+    if (!currentResults.error.isEmpty()) {
+        QMessageBox::warning(nullptr, tr("Error"), currentResults.error);
     }
-    resultsVisible->setEnabled(!currentResults.empty());
+
+    if (resultsVisible->isChecked()) {
+        image->setResults(currentResults.results);
+    }
+    resultsVisible->setEnabled(!currentResults.results.empty());
 
     QApplication::restoreOverrideCursor();
 }
@@ -442,7 +452,7 @@ void MainWindow::onResultsVisible(bool toggled)
     onPostponeMaskUpdate();
 
     if (toggled) {
-        image->setResults(currentResults);
+        image->setResults(currentResults.results);
     }
     else {
         std::vector<QResultImageView::Result> emptyResults;
