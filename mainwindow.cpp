@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include "cpp-move-file-to-trash/move-file-to-trash.h"
+
 #include <QSettings>
 #include <QTimer>
 #include <QListWidget>
@@ -690,7 +692,8 @@ void MainWindow::onRemoveClass()
         const ClassItem& classItem = *i;
         if (currentlySelectedAnnotationClassItem == classItem.listWidgetItem) {
             if (QMessageBox::question(this, tr("Please confirm"), tr("Are you sure you want to remove class \"%1\"?").arg(classItem.className)) == QMessageBox::Yes) {
-                annotationClasses->takeItem(row);
+                QListWidgetItem* item = annotationClasses->takeItem(row);
+                delete item;
                 annotationClassItems.erase(i);
                 saveClassList();
             }
@@ -820,5 +823,53 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     }
     else if (key == Qt::Key_R) {
         resultsVisible->toggle();
+    }
+    else if (key == Qt::Key_Delete) {
+        if (files->hasFocus()) {
+            const int row = files->currentRow();
+            const QString filename = files->item(row)->text();
+            if (filename.length() > 0) {
+
+                const auto confirmAndDeleteFile = [&]() {
+                    const bool isOkToProceed
+                            = QMessageBox::Yes == QMessageBox::question(this, tr("Are you sure?"),
+                                tr("This will permanently delete the file:\n%1").arg(filename));
+                    if (isOkToProceed) {
+                        QFile::remove(filename);
+                        QListWidgetItem* item = files->takeItem(row);
+                        delete item;
+                        loadFile(files->item(files->currentRow()));
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                };
+
+#ifdef WIN32
+                if (event->modifiers() & Qt::ShiftModifier) {
+                    confirmAndDeleteFile();
+                }
+                else {
+                    std::vector<wchar_t> buffer(filename.length() + 1);
+                    filename.toWCharArray(buffer.data());
+                    buffer.back() = L'\0';
+                    try {
+                        move_file_to_trash(buffer.data());
+                        QListWidgetItem* item = files->takeItem(row);
+                        delete item;
+                        loadFile(files->item(files->currentRow()));
+                    }
+                    catch (std::exception& e) {
+                        QString error = QString::fromLatin1(e.what());
+                        error.replace(QString("Unable to move the file to the recycle bin; error code ="), tr("Unable to move file %1 to the recycle bin.\n\nError code =").arg(filename));
+                        QMessageBox::warning(this, tr("Error"), error);
+                    }
+                }
+#else // WIN32
+                confirmAndDeleteFile();
+#endif // WIN32
+            }
+        }
     }
 }

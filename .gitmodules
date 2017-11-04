@@ -1,3 +1,6 @@
 [submodule "QResultImageView"]
 	path = QResultImageView
 	url = https://github.com/reunanen/QResultImageView
+[submodule "cpp-move-file-to-trash"]
+	path = cpp-move-file-to-trash
+	url = https://github.com/reunanen/cpp-move-file-to-trash
