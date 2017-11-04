@@ -32,6 +32,7 @@ private slots:
     void init();
     void initImageIO();
     void onOpenFolder();
+    void onOpenRecentFolder();
     void onFileClicked(QListWidgetItem* item);
     void onFileActivated(const QModelIndex& index);
     void onPanButtonToggled(bool toggled);
@@ -54,6 +55,8 @@ private:
     void createImageView();
 
     void openFolder(const QString& dir);
+    void addRecentFolderMenuItem(const QString& dir);
+    void saveRecentFolders();
     void saveMaskIfDirty();
     void saveMask();
 
@@ -111,6 +114,8 @@ private:
 
     bool maskDirty = false;
     int saveMaskPendingCounter = 0;
+
+    QMenu* recentFoldersMenu;
 };
 
 #endif // MAINWINDOW_H

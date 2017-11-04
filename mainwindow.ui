@@ -43,7 +43,7 @@
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpenFolder">
    <property name="text">
-    <string>&amp;Open folder</string>
+    <string>&amp;Open folder ...</string>
    </property>
   </action>
   <action name="actionExit">

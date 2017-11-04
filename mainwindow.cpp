@@ -39,6 +39,9 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    recentFoldersMenu = new QMenu(tr("&Recent folders"), this);
+    ui->menuFile->insertMenu(ui->actionExit, recentFoldersMenu);
+
     setWindowTitle("anno");
 
     const QSettings settings(companyName, applicationName);
@@ -47,6 +50,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->actionOpenFolder, SIGNAL(triggered()), this, SLOT(onOpenFolder()));
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
+
+    QStringList recentFolders = settings.value("recentFolders").toStringList();
+    for (int i = recentFolders.size() - 1; i >= 0; --i) { // load in reverse order
+        addRecentFolderMenuItem(recentFolders[i]);
+    }
 
     QTimer::singleShot(0, this, SLOT(init()));
 }
@@ -247,8 +255,20 @@ void MainWindow::onOpenFolder()
 
     if (!dir.isEmpty()) {
         settings.setValue("defaultDirectory", dir);
-
         openFolder(dir);
+    }
+}
+
+void MainWindow::onOpenRecentFolder()
+{
+    const QAction *action = qobject_cast<QAction *>(sender());
+    if (action) {
+        const QString dir = action->data().toString();
+        if (!dir.isEmpty()) {
+            QSettings settings(companyName, applicationName);
+            settings.setValue("defaultDirectory", dir);
+            openFolder(dir);
+        }
     }
 }
 
@@ -286,6 +306,8 @@ void MainWindow::openFolder(const QString& dir)
 
     currentWorkingFolder = dir;
 
+    addRecentFolderMenuItem(dir);
+
     loadClassList();
 
     if (annotationClassItems.empty()) {
@@ -295,6 +317,59 @@ void MainWindow::openFolder(const QString& dir)
     }
 
     QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::addRecentFolderMenuItem(const QString& dir)
+{
+    QList<QAction*> currentRecentFoldersActions = recentFoldersMenu->actions();
+
+    // First see if we already have it
+    for (QAction* currentAction : currentRecentFoldersActions) {
+        if (currentAction->data().toString() == dir) {
+            QAction* firstAction = currentRecentFoldersActions.front();
+            if (currentAction != firstAction) {
+                recentFoldersMenu->removeAction(currentAction);
+                recentFoldersMenu->insertAction(firstAction, currentAction);
+            }
+            return;
+        }
+    }
+
+    // Decide where to insert the new item
+    QAction* newRecentFolderAction = nullptr;
+    if (!currentRecentFoldersActions.isEmpty()) {
+        newRecentFolderAction = new QAction(dir, recentFoldersMenu);
+        recentFoldersMenu->insertAction(currentRecentFoldersActions.front(), newRecentFolderAction);
+    }
+    else {
+        newRecentFolderAction = recentFoldersMenu->addAction(dir);
+    }
+
+    newRecentFolderAction->setData(dir);
+    connect(newRecentFolderAction, SIGNAL(triggered()), this, SLOT(onOpenRecentFolder()));
+
+    // Remove old items, if applicable
+    const int maxRecentFolders = 10;
+    while (currentRecentFoldersActions.size() >= maxRecentFolders) {
+        QAction* actionToRemove = currentRecentFoldersActions.back();
+        disconnect(actionToRemove, SIGNAL(triggered()), this, SLOT(onOpenRecentFolder()));
+        recentFoldersMenu->removeAction(actionToRemove);
+        delete actionToRemove;
+        currentRecentFoldersActions.pop_back();
+    }
+
+    saveRecentFolders();
+}
+
+void MainWindow::saveRecentFolders()
+{
+    QSettings settings(companyName, applicationName);
+    QStringList recentFolders;
+    for (QAction* action : recentFoldersMenu->actions()) {
+        const QString dir = action->data().toString();
+        recentFolders.append(dir);
+    }
+    settings.setValue("recentFolders", recentFolders);
 }
 
 void MainWindow::onFileClicked(QListWidgetItem* item)
