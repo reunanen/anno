@@ -286,6 +286,8 @@ void MainWindow::openFolder(const QString& dir)
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
+    image->setImage(QImage());
+
     const QString maskFilenameSuffix = getMaskFilenameSuffix();
     const QString inferenceResultFilenameSuffix = getInferenceResultFilenameSuffix();
 
@@ -845,6 +847,8 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                         return false;
                     }
                 };
+
+                // TODO: Delete also the JSON result files, etc.
 
 #ifdef WIN32
                 if (event->modifiers() & Qt::ShiftModifier) {
