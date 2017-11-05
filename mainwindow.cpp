@@ -287,6 +287,7 @@ void MainWindow::openFolder(const QString& dir)
     QApplication::processEvents(); // actually update the cursor
 
     image->setImage(QImage());
+    image->resetZoomAndPan();
 
     const QString maskFilenameSuffix = getMaskFilenameSuffix();
     const QString inferenceResultFilenameSuffix = getInferenceResultFilenameSuffix();
