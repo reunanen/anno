@@ -37,6 +37,7 @@ private slots:
     void onFileActivated(const QModelIndex& index);
     void onPanButtonToggled(bool toggled);
     void onAnnotateButtonToggled(bool toggled);
+    void onBucketFillToggled(bool toggled);
     void onEraseAnnotationsButtonToggled(bool toggled);
     void onAnnotationClassClicked(QListWidgetItem* item);
     void onMarkingRadiusChanged(int i);
@@ -85,6 +86,7 @@ private:
 
     QRadioButton* panButton = nullptr;
     QRadioButton* annotateButton = nullptr;
+    QCheckBox* bucketFillCheckbox = nullptr;
     QRadioButton* eraseAnnotationsButton = nullptr;
 
     QListWidget* annotationClasses = nullptr;

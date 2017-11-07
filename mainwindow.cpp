@@ -17,6 +17,7 @@
 #include <QRadioButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QLabel>
 #include <QInputDialog>
 #include <QColorDialog>
@@ -209,26 +210,31 @@ void MainWindow::createToolList()
 
     QGroupBox* leftMouseButtonActions = new QGroupBox(tr("Left mouse button actions"));
     {
-        QVBoxLayout* leftMouseButtonActionsLayout = new QVBoxLayout;
+        QGridLayout* leftMouseButtonActionsLayout = new QGridLayout;
 
         panButton = new QRadioButton(tr("&Pan"));
         annotateButton = new QRadioButton(tr("&Annotate"));
+        bucketFillCheckbox = new QCheckBox(tr("&Bucket fill"), this);
         eraseAnnotationsButton = new QRadioButton(tr("&Erase annotations"));
 
         annotationClasses = new QListWidget(this);
         annotationClasses->setFont(QFont("Arial", 10, 0));
 
         panButton->setChecked(true);
+        bucketFillCheckbox->setEnabled(false);
 
-        leftMouseButtonActionsLayout->addWidget(panButton);
-        leftMouseButtonActionsLayout->addWidget(annotateButton);
-        leftMouseButtonActionsLayout->addWidget(annotationClasses);
-        leftMouseButtonActionsLayout->addWidget(classButtonsWidget);
-        leftMouseButtonActionsLayout->addWidget(eraseAnnotationsButton);
+        int row = 0;
+        leftMouseButtonActionsLayout->addWidget(panButton, row++, 0, 1, 2);
+        leftMouseButtonActionsLayout->addWidget(annotateButton, row, 0, 1, 1);
+        leftMouseButtonActionsLayout->addWidget(bucketFillCheckbox, row++, 1, 1, 1);
+        leftMouseButtonActionsLayout->addWidget(annotationClasses, row++, 0, 1, 2);
+        leftMouseButtonActionsLayout->addWidget(classButtonsWidget, row++, 0, 1, 2);
+        leftMouseButtonActionsLayout->addWidget(eraseAnnotationsButton, row++, 0, 1, 2);
 
         connect(panButton, SIGNAL(toggled(bool)), this, SLOT(onPanButtonToggled(bool)));
         connect(eraseAnnotationsButton, SIGNAL(toggled(bool)), this, SLOT(onEraseAnnotationsButtonToggled(bool)));
         connect(annotateButton, SIGNAL(toggled(bool)), this, SLOT(onAnnotateButtonToggled(bool)));
+        connect(bucketFillCheckbox, SIGNAL(toggled(bool)), this, SLOT(onBucketFillToggled(bool)));
         connect(annotationClasses, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onAnnotationClassClicked(QListWidgetItem*)));
 
         leftMouseButtonActions->setLayout(leftMouseButtonActionsLayout);
@@ -473,7 +479,10 @@ void MainWindow::onPanButtonToggled(bool toggled)
 {
     if (toggled) {
         image->setLeftMouseMode(QResultImageView::LeftMouseMode::Pan);
+        bucketFillCheckbox->setChecked(false); // Disable bucket fill, just to prevent accidents
     }
+
+    bucketFillCheckbox->setEnabled(!toggled);
 }
 
 void MainWindow::onAnnotateButtonToggled(bool toggled)
@@ -492,6 +501,11 @@ void MainWindow::onAnnotateButtonToggled(bool toggled)
             image->setLeftMouseMode(QResultImageView::LeftMouseMode::Annotate);
         }
     }
+}
+
+void MainWindow::onBucketFillToggled(bool toggled)
+{
+    image->setFloodFillMode(toggled);
 }
 
 void MainWindow::onEraseAnnotationsButtonToggled(bool toggled)
@@ -829,6 +843,9 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     }
     else if (key == Qt::Key_R) {
         resultsVisible->toggle();
+    }
+    else if (key == Qt::Key_B) {
+        bucketFillCheckbox->toggle();
     }
     else if (key == Qt::Key_Delete) {
         if (files->hasFocus()) {
