@@ -199,7 +199,7 @@ void MainWindow::createToolList()
         renameClassButton = new QPushButton(tr("Rename selected class ..."), this);
         connect(renameClassButton, SIGNAL(clicked()), this, SLOT(onRenameClass()));
 
-        removeClassButton = new QPushButton(tr("Remove selected class"), this);
+        removeClassButton = new QPushButton(tr("Remove selected class ..."), this);
         connect(removeClassButton, SIGNAL(clicked()), this, SLOT(onRemoveClass()));
 
         QVBoxLayout* classButtonsLayout = new QVBoxLayout(classButtonsWidget);
