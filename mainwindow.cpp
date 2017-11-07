@@ -433,8 +433,11 @@ void MainWindow::loadFile(QListWidgetItem* item)
             ));
 
             const QJsonArray paths = colorAndPaths.value("color_paths").toArray();
+            results.results.reserve(paths.size());
+
             for (int j = 0, end = paths.size(); j < end; ++j) {
                 const QJsonArray path = paths[j].toArray();
+                result.contour.reserve(path.size());
                 for (int k = 0, end = path.size(); k < end; ++k) {
                     const QJsonObject point = path[k].toObject();
                     result.contour.push_back(QPointF(point.value("x").toDouble(), point.value("y").toDouble()));
