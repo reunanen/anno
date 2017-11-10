@@ -50,6 +50,8 @@ Section "Main Section" MainSec
 	SetOutPath $INSTDIR\bin\imageformats
 	File ${QTDIR}\plugins\imageformats\qjpeg.dll
 
+	SetOutPath $INSTDIR # The working directory for the shortcuts - should perhaps be something else?
+
 	CreateShortCut "$SMPROGRAMS\anno.lnk" "$INSTDIR\bin\anno.exe" ""
 	CreateShortCut "$DESKTOP\anno.lnk" "$INSTDIR\bin\anno.exe" ""
 
