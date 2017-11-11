@@ -323,8 +323,9 @@ void MainWindow::openFolder(const QString& dir)
 
     if (annotationClassItems.empty()) {
         // Add sample classes
-        addNewClass("Clean", QColor(0, 255, 0, 64));
-        addNewClass("Defect", QColor(255, 0, 0, 128));
+        addNewClass("Clean",        QColor(0,   255, 0,  64));
+        addNewClass("Minor defect", QColor(255, 255, 0, 128));
+        addNewClass("Major defect", QColor(255, 0,   0, 128));
     }
 
     QApplication::restoreOverrideCursor();
