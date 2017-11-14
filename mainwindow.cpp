@@ -128,6 +128,7 @@ void MainWindow::createImageView()
 
     setCentralWidget(image);
 
+    connect(image, SIGNAL(maskUpdating()), this, SLOT(onPostponeMaskUpdate()));
     connect(image, SIGNAL(maskUpdated()), this, SLOT(onMaskUpdated()));
     connect(image, SIGNAL(panned()), this, SLOT(onPostponeMaskUpdate()));
     connect(image, SIGNAL(zoomed()), this, SLOT(onPostponeMaskUpdate()));
