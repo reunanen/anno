@@ -77,6 +77,8 @@ private:
     void loadClassList();
     void saveClassList() const;
 
+    void updateUndoRedoMenuItemStatus();
+
     Ui::MainWindow* ui;
     QListWidget* files = nullptr;
     QResultImageView* image = nullptr;

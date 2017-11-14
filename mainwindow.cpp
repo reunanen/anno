@@ -410,6 +410,7 @@ void MainWindow::loadFile(QListWidgetItem* item)
 
     maskUndoStack.clear();
     maskRedoStack.clear();
+    updateUndoRedoMenuItemStatus();
 
     const auto readImage = [](const QString& filename) { return QImage(filename); };
 
@@ -590,6 +591,8 @@ void MainWindow::onMaskUpdated()
     currentMask = image->getMask();
 
     maskRedoStack.clear();
+
+    updateUndoRedoMenuItemStatus();
 }
 
 void MainWindow::onPostponeMaskUpdate()
@@ -938,6 +941,8 @@ void MainWindow::onUndo()
         image->setMask(currentMask.toImage());
         maskUndoStack.pop_back();
 
+        updateUndoRedoMenuItemStatus();
+
         maskDirty = true;
         ++saveMaskPendingCounter;
         QTimer::singleShot(10000, this, SLOT(onSaveMask()));
@@ -965,6 +970,8 @@ void MainWindow::onRedo()
         image->setMask(currentMask.toImage());
         maskRedoStack.pop_back();
 
+        updateUndoRedoMenuItemStatus();
+
         maskDirty = true;
         ++saveMaskPendingCounter;
         QTimer::singleShot(10000, this, SLOT(onSaveMask()));
@@ -973,4 +980,10 @@ void MainWindow::onRedo()
             QApplication::restoreOverrideCursor();
         }
     }
+}
+
+void MainWindow::updateUndoRedoMenuItemStatus()
+{
+    ui->actionUndo->setEnabled(!maskUndoStack.empty());
+    ui->actionRedo->setEnabled(!maskRedoStack.empty());
 }
