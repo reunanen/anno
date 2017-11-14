@@ -122,6 +122,10 @@ void MainWindow::createImageView()
 {
     image = new QResultImageView(this);
 
+    QPixmap bucketCursorPixmap = QPixmap(":/resources/cursor_bucket.png");
+    QCursor bucketCursor(bucketCursorPixmap, 7, 22);
+    image->setBucketCursor(bucketCursor);
+
     setCentralWidget(image);
 
     connect(image, SIGNAL(maskUpdated()), this, SLOT(onMaskUpdated()));

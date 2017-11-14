@@ -29,3 +29,6 @@ HEADERS  += mainwindow.h \
 FORMS    += mainwindow.ui
 
 RC_FILE = anno.rc
+
+RESOURCES += \
+    anno.qrc

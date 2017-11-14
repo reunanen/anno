@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resources/cursor_bucket.png</file>
+    </qresource>
+</RCC>
