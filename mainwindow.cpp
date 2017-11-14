@@ -293,6 +293,8 @@ void MainWindow::openFolder(const QString& dir)
     files->clear();
     currentImageFileItem = nullptr;
 
+    resetUndoBuffers();
+
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
@@ -408,9 +410,7 @@ void MainWindow::loadFile(QListWidgetItem* item)
     currentImageFileItem = item;
     currentImageFile = item->text();
 
-    maskUndoStack.clear();
-    maskRedoStack.clear();
-    updateUndoRedoMenuItemStatus();
+    resetUndoBuffers();
 
     const auto readImage = [](const QString& filename) { return QImage(filename); };
 
@@ -582,15 +582,12 @@ void MainWindow::onMaskUpdated()
         currentImageFileItem->setTextColor(Qt::black); // now we will have a mask file
     }
 
-    maskUndoStack.push_back(currentMask);
-
-    while (maskUndoStack.size() > maxUndoStackLength) {
-        maskUndoStack.pop_front();
-    }
+    maskUndoBuffer.push_back(currentMask);
+    limitUndoOrRedoBufferSize(maskUndoBuffer);
 
     currentMask = image->getMask();
 
-    maskRedoStack.clear();
+    maskRedoBuffer.clear();
 
     updateUndoRedoMenuItemStatus();
 }
@@ -926,20 +923,18 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 
 void MainWindow::onUndo()
 {
-    if (!maskUndoStack.empty()) {
+    if (!maskUndoBuffer.empty()) {
         const bool requireWaitCursor = currentMask.size().width() * currentMask.size().height() > 1024 * 1024;
         if (requireWaitCursor) {
             QApplication::setOverrideCursor(Qt::WaitCursor);
         }
 
-        maskRedoStack.push_back(currentMask);
-        if (maskRedoStack.size() > maxUndoStackLength) {
-            maskRedoStack.pop_front();
-        }
+        maskRedoBuffer.push_back(currentMask);
+        limitUndoOrRedoBufferSize(maskRedoBuffer);
 
-        currentMask = maskUndoStack.back();
+        currentMask = maskUndoBuffer.back();
         image->setMask(currentMask.toImage());
-        maskUndoStack.pop_back();
+        maskUndoBuffer.pop_back();
 
         updateUndoRedoMenuItemStatus();
 
@@ -955,20 +950,18 @@ void MainWindow::onUndo()
 
 void MainWindow::onRedo()
 {
-    if (!maskRedoStack.empty()) {
+    if (!maskRedoBuffer.empty()) {
         const bool requireWaitCursor = currentMask.size().width() * currentMask.size().height() > 1024 * 1024;
         if (requireWaitCursor) {
             QApplication::setOverrideCursor(Qt::WaitCursor);
         }
 
-        maskUndoStack.push_back(currentMask);
-        if (maskUndoStack.size() > maxUndoStackLength) {
-            maskUndoStack.pop_front();
-        }
+        maskUndoBuffer.push_back(currentMask);
+        limitUndoOrRedoBufferSize(maskUndoBuffer);
 
-        currentMask = maskRedoStack.back();
+        currentMask = maskRedoBuffer.back();
         image->setMask(currentMask.toImage());
-        maskRedoStack.pop_back();
+        maskRedoBuffer.pop_back();
 
         updateUndoRedoMenuItemStatus();
 
@@ -982,8 +975,29 @@ void MainWindow::onRedo()
     }
 }
 
+void MainWindow::resetUndoBuffers()
+{
+    maskUndoBuffer.clear();
+    maskRedoBuffer.clear();
+    updateUndoRedoMenuItemStatus();
+}
+
 void MainWindow::updateUndoRedoMenuItemStatus()
 {
-    ui->actionUndo->setEnabled(!maskUndoStack.empty());
-    ui->actionRedo->setEnabled(!maskRedoStack.empty());
+    ui->actionUndo->setEnabled(!maskUndoBuffer.empty());
+    ui->actionRedo->setEnabled(!maskRedoBuffer.empty());
+}
+
+void MainWindow::limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer)
+{
+    const size_t maxBufferSizeInPixels = 256 * 1024 * 1024; // 256 Mpixels ought to lead to a buffer size of around 1 GB
+    size_t bufferSizeInPixels = 0;
+    for (const QPixmap& item : buffer) {
+        bufferSizeInPixels += item.size().width() * item.size().height();
+    }
+    while (buffer.size() > 1 && bufferSizeInPixels > maxBufferSizeInPixels) {
+        const QPixmap& itemToRemove = buffer.front();
+        bufferSizeInPixels -= itemToRemove.size().width() * itemToRemove.size().height();
+        buffer.pop_front();
+    }
 }

@@ -77,7 +77,9 @@ private:
     void loadClassList();
     void saveClassList() const;
 
+    void resetUndoBuffers();
     void updateUndoRedoMenuItemStatus();
+    void limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer);
 
     Ui::MainWindow* ui;
     QListWidget* files = nullptr;
@@ -124,11 +126,9 @@ private:
 
     QMenu* recentFoldersMenu;
 
-    const int maxUndoStackLength = 10;
-
     QPixmap currentMask;
-    std::deque<QPixmap> maskUndoStack;
-    std::deque<QPixmap> maskRedoStack;
+    std::deque<QPixmap> maskUndoBuffer;
+    std::deque<QPixmap> maskRedoBuffer;
 };
 
 #endif // MAINWINDOW_H
