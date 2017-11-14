@@ -192,6 +192,7 @@ void MainWindow::createToolList()
         markingRadius->setMinimum(1);
         markingRadius->setMaximum(100);
         markingRadius->setValue(radius);
+        markingRadius->setToolTip(tr("Tip: You can change the radius quickly by Ctrl + mouse wheel, when in annotation mode."));
 
         connect(markingRadius, SIGNAL(valueChanged(int)), this, SLOT(onMarkingRadiusChanged(int)));
 
