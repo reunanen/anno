@@ -286,6 +286,8 @@ void MainWindow::onOpenRecentFolder()
 
 void MainWindow::openFolder(const QString& dir)
 {
+    saveMaskIfDirty();
+
     if (!files) {
         createFileList();
     }
