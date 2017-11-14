@@ -130,6 +130,7 @@ void MainWindow::createImageView()
 void MainWindow::createFileList()
 {
     QDockWidget* fileListDockWidget = new QDockWidget(tr("Files"), this);
+    fileListDockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable); // no close button
     fileListDockWidget->setObjectName("Files");
 
     files = new QListWidget(this);
@@ -154,6 +155,7 @@ void MainWindow::createToolList()
     const QSettings settings(companyName, applicationName);
 
     QDockWidget* dockWidget = new QDockWidget(tr("Tools"), this);
+    dockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable); // no close button
     dockWidget->setObjectName("Tools");
 
     QWidget* widget = new QWidget(this);
