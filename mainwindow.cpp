@@ -6,7 +6,6 @@
 #include <QSettings>
 #include <QTimer>
 #include <QListWidget>
-#include <QPainter>
 #include <QFileDialog>
 #include <QDirIterator>
 #include <QDockWidget>
@@ -477,22 +476,26 @@ void MainWindow::loadFile(QListWidgetItem* item)
 
     auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(currentImageFile));
 
-    QImage mask = maskFuture.result();
+    {
+        QImage mask = maskFuture.result();
+        currentMask = QPixmap::fromImage(mask);
 
-    currentMask = QPixmap::fromImage(mask);
+        QResultImageView::DelayedRedrawToken delayedRedrawToken;
 
-    image->setImageAndMask(imageFuture.result(), mask);
+        image->setImage(imageFuture.result(), &delayedRedrawToken);
+        image->setMask(mask, &delayedRedrawToken);
 
-    currentResults = resultsFuture.result();
+        currentResults = resultsFuture.result();
 
-    if (!currentResults.error.isEmpty()) {
-        QMessageBox::warning(nullptr, tr("Error"), currentResults.error);
+        if (!currentResults.error.isEmpty()) {
+            QMessageBox::warning(nullptr, tr("Error"), currentResults.error);
+        }
+
+        if (resultsVisible->isChecked()) {
+            image->setResults(currentResults.results, &delayedRedrawToken);
+        }
+        resultsVisible->setEnabled(!currentResults.results.empty());
     }
-
-    if (resultsVisible->isChecked()) {
-        image->setResults(currentResults.results);
-    }
-    resultsVisible->setEnabled(!currentResults.results.empty());
 
     QApplication::restoreOverrideCursor();
 }
