@@ -131,6 +131,7 @@ void MainWindow::createImageView()
     connect(image, SIGNAL(maskUpdated()), this, SLOT(onMaskUpdated()));
     connect(image, SIGNAL(panned()), this, SLOT(onPostponeMaskUpdate()));
     connect(image, SIGNAL(zoomed()), this, SLOT(onPostponeMaskUpdate()));
+    connect(image, SIGNAL(newMarkingRadius(int)), this, SLOT(onNewMarkingRadius(int)));
 }
 
 void MainWindow::createFileList()
@@ -1006,4 +1007,9 @@ void MainWindow::limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer)
         bufferSizeInPixels -= itemToRemove.size().width() * itemToRemove.size().height();
         buffer.pop_front();
     }
+}
+
+void MainWindow::onNewMarkingRadius(int newMarkingRadius)
+{
+    markingRadius->setValue(newMarkingRadius);
 }

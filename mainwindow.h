@@ -52,6 +52,7 @@ private slots:
     void onRemoveClass();
     void onUndo();
     void onRedo();
+    void onNewMarkingRadius(int newMarkingRadius);
 
 private:
     void createFileList();
