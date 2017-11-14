@@ -15,6 +15,7 @@ class QRadioButton;
 class QPushButton;
 
 #include "QResultImageView/QResultImageView.h"
+#include <deque>
 
 class MainWindow : public QMainWindow
 {
@@ -49,6 +50,8 @@ private slots:
     void onAddClass();
     void onRenameClass();
     void onRemoveClass();
+    void onUndo();
+    void onRedo();
 
 private:
     void createFileList();
@@ -118,6 +121,12 @@ private:
     int saveMaskPendingCounter = 0;
 
     QMenu* recentFoldersMenu;
+
+    const int maxUndoStackLength = 10;
+
+    QPixmap currentMask;
+    std::deque<QPixmap> maskUndoStack;
+    std::deque<QPixmap> maskRedoStack;
 };
 
 #endif // MAINWINDOW_H

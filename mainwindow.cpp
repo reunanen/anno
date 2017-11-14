@@ -53,6 +53,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->actionOpenFolder, SIGNAL(triggered()), this, SLOT(onOpenFolder()));
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
+    connect(ui->actionUndo, SIGNAL(triggered()), this, SLOT(onUndo()));
+    connect(ui->actionRedo, SIGNAL(triggered()), this, SLOT(onRedo()));
 
     QStringList recentFolders = settings.value("recentFolders").toStringList();
     for (int i = recentFolders.size() - 1; i >= 0; --i) { // load in reverse order
@@ -406,6 +408,9 @@ void MainWindow::loadFile(QListWidgetItem* item)
     currentImageFileItem = item;
     currentImageFile = item->text();
 
+    maskUndoStack.clear();
+    maskRedoStack.clear();
+
     const auto readImage = [](const QString& filename) { return QImage(filename); };
 
     QFuture<QImage> imageFuture = QtConcurrent::run(readImage, currentImageFile);
@@ -462,7 +467,11 @@ void MainWindow::loadFile(QListWidgetItem* item)
 
     auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(currentImageFile));
 
-    image->setImageAndMask(imageFuture.result(), maskFuture.result());
+    QImage mask = maskFuture.result();
+
+    currentMask = QPixmap::fromImage(mask);
+
+    image->setImageAndMask(imageFuture.result(), mask);
 
     currentResults = resultsFuture.result();
 
@@ -571,6 +580,16 @@ void MainWindow::onMaskUpdated()
     if (currentImageFileItem != nullptr) {
         currentImageFileItem->setTextColor(Qt::black); // now we will have a mask file
     }
+
+    maskUndoStack.push_back(currentMask);
+
+    while (maskUndoStack.size() > maxUndoStackLength) {
+        maskUndoStack.pop_front();
+    }
+
+    currentMask = image->getMask();
+
+    maskRedoStack.clear();
 }
 
 void MainWindow::onPostponeMaskUpdate()
@@ -898,6 +917,60 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                 confirmAndDeleteFile();
 #endif // WIN32
             }
+        }
+    }
+}
+
+void MainWindow::onUndo()
+{
+    if (!maskUndoStack.empty()) {
+        const bool requireWaitCursor = currentMask.size().width() * currentMask.size().height() > 1024 * 1024;
+        if (requireWaitCursor) {
+            QApplication::setOverrideCursor(Qt::WaitCursor);
+        }
+
+        maskRedoStack.push_back(currentMask);
+        if (maskRedoStack.size() > maxUndoStackLength) {
+            maskRedoStack.pop_front();
+        }
+
+        currentMask = maskUndoStack.back();
+        image->setMask(currentMask.toImage());
+        maskUndoStack.pop_back();
+
+        maskDirty = true;
+        ++saveMaskPendingCounter;
+        QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+
+        if (requireWaitCursor) {
+            QApplication::restoreOverrideCursor();
+        }
+    }
+}
+
+void MainWindow::onRedo()
+{
+    if (!maskRedoStack.empty()) {
+        const bool requireWaitCursor = currentMask.size().width() * currentMask.size().height() > 1024 * 1024;
+        if (requireWaitCursor) {
+            QApplication::setOverrideCursor(Qt::WaitCursor);
+        }
+
+        maskUndoStack.push_back(currentMask);
+        if (maskUndoStack.size() > maxUndoStackLength) {
+            maskUndoStack.pop_front();
+        }
+
+        currentMask = maskRedoStack.back();
+        image->setMask(currentMask.toImage());
+        maskRedoStack.pop_back();
+
+        maskDirty = true;
+        ++saveMaskPendingCounter;
+        QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+
+        if (requireWaitCursor) {
+            QApplication::restoreOverrideCursor();
         }
     }
 }
