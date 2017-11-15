@@ -1032,6 +1032,10 @@ void MainWindow::onAbout()
 
         aboutDialog = loader.load(&file, this);
 
+        // remove the question mark from the title bar
+        aboutDialog->setWindowFlags(aboutDialog->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
+        // set the anno version number
         QLabel* versionNumber = aboutDialog->findChild<QLabel*>("versionNumber");
         versionNumber->setText(version);
     }
