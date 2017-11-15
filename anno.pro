@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui uitools
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -24,9 +24,11 @@ SOURCES += main.cpp \
 
 HEADERS  += mainwindow.h \
     QResultImageView/QResultImageView.h \
-    QResultImageView/qt-image-flood-fill/qfloodfill.h
+    QResultImageView/qt-image-flood-fill/qfloodfill.h \
+    version.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+    about.ui
 
 RC_FILE = anno.rc
 

@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "version.h"
 
 #include "cpp-move-file-to-trash/move-file-to-trash.h"
 
@@ -28,6 +29,7 @@
 #include <QJsonObject>
 #include <QBuffer>
 #include <QKeyEvent>
+#include <QtUiTools>
 #include <assert.h>
 
 namespace {
@@ -54,6 +56,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
     connect(ui->actionUndo, SIGNAL(triggered()), this, SLOT(onUndo()));
     connect(ui->actionRedo, SIGNAL(triggered()), this, SLOT(onRedo()));
+    connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(onAbout()));
 
     QStringList recentFolders = settings.value("recentFolders").toStringList();
     for (int i = recentFolders.size() - 1; i >= 0; --i) { // load in reverse order
@@ -1017,4 +1020,21 @@ void MainWindow::limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer)
 void MainWindow::onNewMarkingRadius(int newMarkingRadius)
 {
     markingRadius->setValue(newMarkingRadius);
+}
+
+void MainWindow::onAbout()
+{
+    if (!aboutDialog) {
+        QUiLoader loader;
+
+        QFile file(":/about.ui");
+        file.open(QFile::ReadOnly);
+
+        aboutDialog = loader.load(&file, this);
+
+        QLabel* versionNumber = aboutDialog->findChild<QLabel*>("versionNumber");
+        versionNumber->setText(version);
+    }
+
+    aboutDialog->show();
 }

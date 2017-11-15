@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/cursor_bucket.png</file>
+        <file>about.ui</file>
     </qresource>
 </RCC>

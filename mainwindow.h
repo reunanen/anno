@@ -53,6 +53,7 @@ private slots:
     void onUndo();
     void onRedo();
     void onNewMarkingRadius(int newMarkingRadius);
+    void onAbout();
 
 private:
     void createFileList();
@@ -130,6 +131,8 @@ private:
     QPixmap currentMask;
     std::deque<QPixmap> maskUndoBuffer;
     std::deque<QPixmap> maskRedoBuffer;
+
+    QWidget* aboutDialog = nullptr;
 };
 
 #endif // MAINWINDOW_H

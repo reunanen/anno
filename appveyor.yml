@@ -5,6 +5,7 @@ init:
 install:
   - git submodule update --init --recursive
 build_script:
+  - echo namespace { const char* version = "%APPVEYOR_BUILD_VERSION%"; } > version.h
   - qmake anno.pro
   - nmake
   - makensis anno-installer.nsi
