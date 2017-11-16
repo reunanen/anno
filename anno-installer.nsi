@@ -16,6 +16,12 @@ InstallDir "$PROGRAMFILES64\anno"
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_CHECKED
+!define MUI_FINISHPAGE_RUN_TEXT "Launch anno"
+!define MUI_FINISHPAGE_RUN_FUNCTION "Launch"
+!insertmacro MUI_PAGE_FINISH
+
 !insertmacro MUI_LANGUAGE "English"
 
 # From: https://stackoverflow.com/a/28335075/19254
@@ -52,6 +58,7 @@ Section "Main Section" MainSec
 
 	SetOutPath $INSTDIR # The working directory for the shortcuts - should perhaps be something else?
 
+	CreateShortCut "$INSTDIR\anno.lnk" "$INSTDIR\bin\anno.exe" ""
 	CreateShortCut "$SMPROGRAMS\anno.lnk" "$INSTDIR\bin\anno.exe" ""
 	CreateShortCut "$DESKTOP\anno.lnk" "$INSTDIR\bin\anno.exe" ""
 
@@ -62,12 +69,19 @@ Section "Main Section" MainSec
 
 SectionEnd
 
+Function Launch
+	ExecShell "" "$INSTDIR\anno.lnk"
+FunctionEnd
+
 Section "Uninstall"
 
 	DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\anno"
 	DeleteRegKey HKCU "Software\Tomaattinen\anno"
 
 	Delete $INSTDIR\anno-uninstaller.exe
+	Delete $INSTDIR\anno.lnk
+	Delete $SMPROGRAMS\anno.lnk
+	Delete $DESKTOP\anno.lnk
 	Delete $INSTDIR\bin\anno.exe
 	Delete $INSTDIR\bin\imageformats\*.dll
 	Delete $INSTDIR\bin\platforms\*.dll
