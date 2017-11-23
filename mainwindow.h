@@ -53,6 +53,7 @@ private slots:
     void onUndo();
     void onRedo();
     void onNewMarkingRadius(int newMarkingRadius);
+    void onAnnotationsVisible(bool visible);
     void onAbout();
 
 private:

@@ -135,6 +135,7 @@ void MainWindow::createImageView()
     connect(image, SIGNAL(panned()), this, SLOT(onPostponeMaskUpdate()));
     connect(image, SIGNAL(zoomed()), this, SLOT(onPostponeMaskUpdate()));
     connect(image, SIGNAL(newMarkingRadius(int)), this, SLOT(onNewMarkingRadius(int)));
+    connect(image, SIGNAL(annotationsVisible(bool)), this, SLOT(onAnnotationsVisible(bool)));
 }
 
 void MainWindow::createFileList()
@@ -1020,6 +1021,13 @@ void MainWindow::limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer)
 void MainWindow::onNewMarkingRadius(int newMarkingRadius)
 {
     markingRadius->setValue(newMarkingRadius);
+}
+
+void MainWindow::onAnnotationsVisible(bool visible)
+{
+    disconnect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
+    markingsVisible->setChecked(visible);
+    connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
 }
 
 void MainWindow::onAbout()
