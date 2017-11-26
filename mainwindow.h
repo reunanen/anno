@@ -134,6 +134,8 @@ private:
     std::deque<QPixmap> maskRedoBuffer;
 
     QWidget* aboutDialog = nullptr;
+
+    bool reverseFileOrder = false;
 };
 
 #endif // MAINWINDOW_H

@@ -51,6 +51,7 @@ MainWindow::MainWindow(QWidget *parent) :
     const QSettings settings(companyName, applicationName);
     restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     restoreState(settings.value("mainWindowState").toByteArray());
+    reverseFileOrder = settings.value("reverseFileOrder").toBool();
 
     connect(ui->actionOpenFolder, SIGNAL(triggered()), this, SLOT(onOpenFolder()));
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
@@ -78,6 +79,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     QSettings settings(companyName, applicationName);
     settings.setValue("mainWindowGeometry", saveGeometry());
     settings.setValue("mainWindowState", saveState());
+    settings.setValue("reverseFileOrder", reverseFileOrder);
 
     if (markingRadius) {
         settings.setValue("markingRadius", markingRadius->value());
@@ -332,6 +334,8 @@ void MainWindow::openFolder(const QString& dir)
             }
         }
     }
+
+    files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
 
     currentWorkingFolder = dir;
 
@@ -884,6 +888,18 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     }
     else if (key == Qt::Key_B) {
         bucketFillCheckbox->toggle();
+    }
+    else if (key == Qt::Key_S) {
+        reverseFileOrder = !reverseFileOrder;
+        if (files) {
+            QApplication::setOverrideCursor(Qt::WaitCursor);
+            files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
+            auto* currentItem = files->currentItem();
+            if (currentItem) {
+                files->scrollToItem(currentItem, QListWidget::EnsureVisible);
+            }
+            QApplication::restoreOverrideCursor();
+        }
     }
     else if (key == Qt::Key_F5) {
         openFolder(currentWorkingFolder);
