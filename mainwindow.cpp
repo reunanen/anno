@@ -885,6 +885,9 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     else if (key == Qt::Key_B) {
         bucketFillCheckbox->toggle();
     }
+    else if (key == Qt::Key_F5) {
+        openFolder(currentWorkingFolder);
+    }
     else if (key == Qt::Key_Delete) {
         if (files->hasFocus()) {
             const int row = files->currentRow();
