@@ -43,6 +43,9 @@ private slots:
     void onAnnotationClassClicked(QListWidgetItem* item);
     void onMarkingRadiusChanged(int i);
     void onMarkingsVisible(bool toggled);
+    void onRightMousePanButtonToggled(bool toggled);
+    void onRightMouseEraseAnnotationsButtonToggled(bool toggled);
+    void onRightMouseResetViewButtonToggled(bool toggled);
     void onResultsVisible(bool toggled);
     void onMaskUpdated();
     void onPostponeMaskUpdate();
@@ -110,6 +113,11 @@ private:
     QPushButton* addClassButton = nullptr;
     QPushButton* renameClassButton = nullptr;
     QPushButton* removeClassButton = nullptr;
+
+    QRadioButton* rightMousePanButton = nullptr;
+    QRadioButton* rightMouseEraseAnnotationsButton = nullptr;
+    QRadioButton* rightMouseResetViewButton = nullptr;
+
     QCheckBox* resultsVisible = nullptr;
 
     QString currentWorkingFolder;

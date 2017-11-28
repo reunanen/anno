@@ -256,6 +256,28 @@ void MainWindow::createToolList()
         leftMouseButtonActions->setLayout(leftMouseButtonActionsLayout);
     }
 
+    QGroupBox* rightMouseButtonActions = new QGroupBox(tr("Right mouse button actions"));
+    {
+        QGridLayout* rightMouseButtonActionsLayout = new QGridLayout;
+
+        rightMousePanButton = new QRadioButton(tr("Pa&n"));
+        rightMouseEraseAnnotationsButton = new QRadioButton(tr("Erase anno&tations"));
+        rightMouseResetViewButton = new QRadioButton(tr("Reset vie&w"));
+
+        rightMouseResetViewButton->setChecked(true);
+
+        int row = 0;
+        rightMouseButtonActionsLayout->addWidget(rightMousePanButton, row++, 0, 1, 1);
+        rightMouseButtonActionsLayout->addWidget(rightMouseEraseAnnotationsButton, row++, 0, 1, 1);
+        rightMouseButtonActionsLayout->addWidget(rightMouseResetViewButton, row++, 0, 1, 1);
+
+        connect(rightMousePanButton, SIGNAL(toggled(bool)), this, SLOT(onRightMousePanButtonToggled(bool)));
+        connect(rightMouseEraseAnnotationsButton, SIGNAL(toggled(bool)), this, SLOT(onRightMouseEraseAnnotationsButtonToggled(bool)));
+        connect(rightMouseResetViewButton, SIGNAL(toggled(bool)), this, SLOT(onRightMouseResetViewButtonToggled(bool)));
+
+        rightMouseButtonActions->setLayout(rightMouseButtonActionsLayout);
+    }
+
     {
         resultsVisible = new QCheckBox("&Results visible", this);
         resultsVisible->setChecked(true);
@@ -266,6 +288,8 @@ void MainWindow::createToolList()
     layout->addWidget(markingsVisible);
     layout->addWidget(markingRadiusWidget);
     layout->addWidget(leftMouseButtonActions);
+    layout->addSpacing(10);
+    layout->addWidget(rightMouseButtonActions);
     layout->addSpacing(10);
     layout->addWidget(resultsVisible);
 }
@@ -575,6 +599,27 @@ void MainWindow::onMarkingsVisible(bool toggled)
     onPostponeMaskUpdate();
 
     image->setMaskVisible(toggled);
+}
+
+void MainWindow::onRightMousePanButtonToggled(bool toggled)
+{
+    if (toggled) {
+        image->setRightMouseMode(QResultImageView::RightMouseMode::Pan);
+    }
+}
+
+void MainWindow::onRightMouseEraseAnnotationsButtonToggled(bool toggled)
+{
+    if (toggled) {
+        image->setRightMouseMode(QResultImageView::RightMouseMode::EraseAnnotations);
+    }
+}
+
+void MainWindow::onRightMouseResetViewButtonToggled(bool toggled)
+{
+    if (toggled) {
+        image->setRightMouseMode(QResultImageView::RightMouseMode::ResetView);
+    }
 }
 
 void MainWindow::onResultsVisible(bool toggled)
