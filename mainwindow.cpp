@@ -125,6 +125,7 @@ void MainWindow::initImageIO()
 void MainWindow::createImageView()
 {
     image = new QResultImageView(this);
+    onYardstickVisible(true);
 
     QPixmap bucketCursorPixmap = QPixmap(":/resources/cursor_bucket.png");
     QCursor bucketCursor(bucketCursorPixmap, 7, 22);
@@ -285,6 +286,13 @@ void MainWindow::createToolList()
         connect(resultsVisible, SIGNAL(toggled(bool)), this, SLOT(onResultsVisible(bool)));
     }
 
+    {
+        yardstickVisible = new QCheckBox("&Yardstick visible", this);
+        yardstickVisible->setChecked(true);
+
+        connect(yardstickVisible, SIGNAL(toggled(bool)), this, SLOT(onYardstickVisible(bool)));
+    }
+
     layout->addWidget(markingsVisible);
     layout->addWidget(markingRadiusWidget);
     layout->addWidget(leftMouseButtonActions);
@@ -292,6 +300,8 @@ void MainWindow::createToolList()
     layout->addWidget(rightMouseButtonActions);
     layout->addSpacing(10);
     layout->addWidget(resultsVisible);
+    layout->addSpacing(10);
+    layout->addWidget(yardstickVisible);
 }
 
 void MainWindow::onOpenFolder()
@@ -635,6 +645,16 @@ void MainWindow::onResultsVisible(bool toggled)
     }
 }
 
+void MainWindow::onYardstickVisible(bool toggled)
+{
+    if (toggled) {
+        image->setPixelSize(1, "px", false);
+    }
+    else {
+        image->setPixelSize(std::numeric_limits<double>::quiet_NaN(), "", false);
+    }
+}
+
 void MainWindow::onMaskUpdated()
 {
     maskDirty = true;
@@ -907,6 +927,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     if (key == Qt::Key_Space) {
         markingsVisible->toggle();
         resultsVisible->toggle();
+        //yardstickVisible->toggle();
     }
     else if (key == Qt::Key_Escape || key == Qt::Key_P) {
         panButton->setChecked(true);
@@ -952,6 +973,11 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     else if (key == Qt::Key_Z) {
         if (image) {
             image->resetZoomAndPan();
+        }
+    }
+    else if (key == Qt::Key_Y) {
+        if (image) {
+            yardstickVisible->toggle();
         }
     }
     else if (key == Qt::Key_Delete) {

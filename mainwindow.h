@@ -47,6 +47,7 @@ private slots:
     void onRightMouseEraseAnnotationsButtonToggled(bool toggled);
     void onRightMouseResetViewButtonToggled(bool toggled);
     void onResultsVisible(bool toggled);
+    void onYardstickVisible(bool toggled);
     void onMaskUpdated();
     void onPostponeMaskUpdate();
     void onSaveMask();
@@ -119,6 +120,7 @@ private:
     QRadioButton* rightMouseResetViewButton = nullptr;
 
     QCheckBox* resultsVisible = nullptr;
+    QCheckBox* yardstickVisible = nullptr;
 
     QString currentWorkingFolder;
     QListWidgetItem* currentImageFileItem = nullptr;
