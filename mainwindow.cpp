@@ -106,8 +106,12 @@ void MainWindow::init()
         onOpenFolder();
     }
 
-    restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
-    restoreState(settings.value("mainWindowState").toByteArray());
+    const bool geometryRestored = restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
+    const bool stateRestored = restoreState(settings.value("mainWindowState").toByteArray());
+
+    if (!geometryRestored && !stateRestored) {
+        showMaximized();
+    }
 
     setFocusPolicy(Qt::StrongFocus);
 }
