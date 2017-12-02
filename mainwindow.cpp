@@ -311,7 +311,12 @@ void MainWindow::createToolList()
 void MainWindow::onOpenFolder()
 {
     QSettings settings(companyName, applicationName);
-    const QString defaultDirectory = settings.value("defaultDirectory").toString();
+    QString defaultDirectory = settings.value("defaultDirectory").toString();
+    if (defaultDirectory.isEmpty()) {
+#ifdef _WIN32
+        defaultDirectory = "C:\\";
+#endif
+    }
     const QString dir = QFileDialog::getExistingDirectory(this, tr("Select a folder containing some images"), defaultDirectory,
                                                           QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
