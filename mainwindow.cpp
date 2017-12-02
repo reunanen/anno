@@ -111,6 +111,12 @@ void MainWindow::init()
 
     if (!geometryRestored && !stateRestored) {
         showMaximized();
+
+        if (files->count() > 0) {
+            QListWidgetItem* firstFile = files->item(0);
+            firstFile->setSelected(true);
+            onFileClicked(firstFile);
+        }
     }
 
     setFocusPolicy(Qt::StrongFocus);
