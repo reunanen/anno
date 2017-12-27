@@ -19,12 +19,10 @@ SOURCES += main.cpp \
     mainwindow.cpp \
     mainwindow.cpp \
     QResultImageView/QResultImageView.cpp \
-    QResultImageView/qt-image-flood-fill/qfloodfill.cpp \
     cpp-move-file-to-trash/move-file-to-trash.cpp
 
 HEADERS  += mainwindow.h \
     QResultImageView/QResultImageView.h \
-    QResultImageView/qt-image-flood-fill/qfloodfill.h \
     version.h
 
 FORMS    += mainwindow.ui \

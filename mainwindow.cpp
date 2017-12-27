@@ -34,7 +34,7 @@
 
 namespace {
     const char* companyName = "Tomaattinen";
-    const char* applicationName = "anno";
+    const char* applicationName = "anno-single-rectangle-per-image";
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -74,16 +74,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    saveMaskIfDirty();
-
     QSettings settings(companyName, applicationName);
     settings.setValue("mainWindowGeometry", saveGeometry());
     settings.setValue("mainWindowState", saveState());
     settings.setValue("reverseFileOrder", reverseFileOrder);
-
-    if (markingRadius) {
-        settings.setValue("markingRadius", markingRadius->value());
-    }
 
     QMainWindow::closeEvent(event);
 }
@@ -94,8 +88,6 @@ void MainWindow::init()
     createToolList();
     createFileList();
     createImageView();
-
-    image->setMarkingRadius(markingRadius->value());
 
     const QSettings settings(companyName, applicationName);
     const QString defaultDirectory = settings.value("defaultDirectory").toString();
@@ -137,18 +129,11 @@ void MainWindow::createImageView()
     image = new QResultImageView(this);
     onYardstickVisible(true);
 
-    QPixmap bucketCursorPixmap = QPixmap(":/resources/cursor_bucket.png");
-    QCursor bucketCursor(bucketCursorPixmap, 7, 22);
-    image->setBucketCursor(bucketCursor);
-
     setCentralWidget(image);
 
-    connect(image, SIGNAL(maskUpdating()), this, SLOT(onPostponeMaskUpdate()));
-    connect(image, SIGNAL(maskUpdated()), this, SLOT(onMaskUpdated()));
-    connect(image, SIGNAL(panned()), this, SLOT(onPostponeMaskUpdate()));
-    connect(image, SIGNAL(zoomed()), this, SLOT(onPostponeMaskUpdate()));
-    connect(image, SIGNAL(newMarkingRadius(int)), this, SLOT(onNewMarkingRadius(int)));
-    connect(image, SIGNAL(annotationsVisible(bool)), this, SLOT(onAnnotationsVisible(bool)));
+    //connect(image, SIGNAL(annotationUpdating()), this, SLOT(onPostponeMaskUpdate()));
+    connect(image, SIGNAL(annotationUpdated()), this, SLOT(onAnnotationUpdated()));
+    connect(image, SIGNAL(makeAnnotationsVisible(bool)), this, SLOT(onAnnotationsVisible(bool)));
 }
 
 void MainWindow::createFileList()
@@ -188,52 +173,16 @@ void MainWindow::createToolList()
     addDockWidget(Qt::RightDockWidgetArea, dockWidget);
 
     QVBoxLayout* layout = new QVBoxLayout(widget);
-    layout->setSpacing(0);
 
     {
-        markingsVisible = new QCheckBox("Annotations &visible", this);
-        markingsVisible->setChecked(true);
+        annotationsVisible = new QCheckBox("Annotations &visible", this);
+        annotationsVisible->setChecked(true);
 
-        connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
+        connect(annotationsVisible, SIGNAL(toggled(bool)), this, SLOT(onAnnotationsVisible(bool)));
     }
 
-    bool radiusOk = false;
-    int radius = settings.value("markingRadius").toInt(&radiusOk);
-    if (!radiusOk) {
-        radius = 10;
-    }
-
-    QWidget* markingRadiusWidget = new QWidget(this);
-    {
-        markingRadius = new QSpinBox(this);
-        markingRadius->setMinimum(1);
-        markingRadius->setMaximum(100);
-        markingRadius->setValue(radius);
-        markingRadius->setToolTip(tr("Tip: You can change the radius quickly by Ctrl + mouse wheel, when in annotation mode."));
-
-        connect(markingRadius, SIGNAL(valueChanged(int)), this, SLOT(onMarkingRadiusChanged(int)));
-
-        QHBoxLayout* markingRadiusLayout = new QHBoxLayout(markingRadiusWidget);
-        markingRadiusLayout->addWidget(new QLabel(tr("Annotation radius"), this));
-        markingRadiusLayout->addWidget(markingRadius);
-    }
-
-    QWidget* classButtonsWidget = new QWidget(this);
-    {
-        addClassButton = new QPushButton(tr("Add new class ..."), this);
-        connect(addClassButton, SIGNAL(clicked()), this, SLOT(onAddClass()));
-
-        renameClassButton = new QPushButton(tr("Rename selected class ..."), this);
-        connect(renameClassButton, SIGNAL(clicked()), this, SLOT(onRenameClass()));
-
-        removeClassButton = new QPushButton(tr("Remove selected class ..."), this);
-        connect(removeClassButton, SIGNAL(clicked()), this, SLOT(onRemoveClass()));
-
-        QVBoxLayout* classButtonsLayout = new QVBoxLayout(classButtonsWidget);
-        classButtonsLayout->addWidget(addClassButton);
-        classButtonsLayout->addWidget(renameClassButton);
-        classButtonsLayout->addWidget(removeClassButton);
-    }
+    eraseAnnotationsButton = new QPushButton(tr("&Remove current annotation"));
+    connect(eraseAnnotationsButton, SIGNAL(clicked()), this, SLOT(onEraseAnnotationsButtonClicked()));
 
     QGroupBox* leftMouseButtonActions = new QGroupBox(tr("Left mouse button actions"));
     {
@@ -241,28 +190,15 @@ void MainWindow::createToolList()
 
         panButton = new QRadioButton(tr("&Pan"));
         annotateButton = new QRadioButton(tr("&Annotate"));
-        bucketFillCheckbox = new QCheckBox(tr("&Bucket fill"), this);
-        eraseAnnotationsButton = new QRadioButton(tr("&Erase annotations"));
 
-        annotationClasses = new QListWidget(this);
-        annotationClasses->setFont(QFont("Arial", 10, 0));
-
-        panButton->setChecked(true);
-        bucketFillCheckbox->setEnabled(false);
+        annotateButton->setChecked(true);
 
         int row = 0;
         leftMouseButtonActionsLayout->addWidget(panButton, row++, 0, 1, 2);
-        leftMouseButtonActionsLayout->addWidget(annotateButton, row, 0, 1, 1);
-        leftMouseButtonActionsLayout->addWidget(bucketFillCheckbox, row++, 1, 1, 1);
-        leftMouseButtonActionsLayout->addWidget(annotationClasses, row++, 0, 1, 2);
-        leftMouseButtonActionsLayout->addWidget(classButtonsWidget, row++, 0, 1, 2);
-        leftMouseButtonActionsLayout->addWidget(eraseAnnotationsButton, row++, 0, 1, 2);
+        leftMouseButtonActionsLayout->addWidget(annotateButton, row++, 0, 1, 1);
 
         connect(panButton, SIGNAL(toggled(bool)), this, SLOT(onPanButtonToggled(bool)));
-        connect(eraseAnnotationsButton, SIGNAL(toggled(bool)), this, SLOT(onEraseAnnotationsButtonToggled(bool)));
         connect(annotateButton, SIGNAL(toggled(bool)), this, SLOT(onAnnotateButtonToggled(bool)));
-        connect(bucketFillCheckbox, SIGNAL(toggled(bool)), this, SLOT(onBucketFillToggled(bool)));
-        connect(annotationClasses, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onAnnotationClassClicked(QListWidgetItem*)));
 
         leftMouseButtonActions->setLayout(leftMouseButtonActionsLayout);
     }
@@ -272,18 +208,15 @@ void MainWindow::createToolList()
         QGridLayout* rightMouseButtonActionsLayout = new QGridLayout;
 
         rightMousePanButton = new QRadioButton(tr("Pa&n"));
-        rightMouseEraseAnnotationsButton = new QRadioButton(tr("Erase anno&tations"));
         rightMouseResetViewButton = new QRadioButton(tr("Reset vie&w"));
 
         rightMouseResetViewButton->setChecked(true);
 
         int row = 0;
         rightMouseButtonActionsLayout->addWidget(rightMousePanButton, row++, 0, 1, 1);
-        rightMouseButtonActionsLayout->addWidget(rightMouseEraseAnnotationsButton, row++, 0, 1, 1);
         rightMouseButtonActionsLayout->addWidget(rightMouseResetViewButton, row++, 0, 1, 1);
 
         connect(rightMousePanButton, SIGNAL(toggled(bool)), this, SLOT(onRightMousePanButtonToggled(bool)));
-        connect(rightMouseEraseAnnotationsButton, SIGNAL(toggled(bool)), this, SLOT(onRightMouseEraseAnnotationsButtonToggled(bool)));
         connect(rightMouseResetViewButton, SIGNAL(toggled(bool)), this, SLOT(onRightMouseResetViewButtonToggled(bool)));
 
         rightMouseButtonActions->setLayout(rightMouseButtonActionsLayout);
@@ -303,14 +236,17 @@ void MainWindow::createToolList()
         connect(yardstickVisible, SIGNAL(toggled(bool)), this, SLOT(onYardstickVisible(bool)));
     }
 
-    layout->addWidget(markingsVisible);
-    layout->addWidget(markingRadiusWidget);
+    layout->addWidget(annotationsVisible);
+    layout->addSpacing(10);
     layout->addWidget(leftMouseButtonActions);
     layout->addSpacing(10);
     layout->addWidget(rightMouseButtonActions);
     layout->addSpacing(10);
+    layout->addWidget(eraseAnnotationsButton);
+    layout->addSpacing(10);
     layout->addWidget(resultsVisible);
     layout->addSpacing(10);
+    layout->addStretch(1);
     layout->addWidget(yardstickVisible);
 }
 
@@ -347,8 +283,6 @@ void MainWindow::onOpenRecentFolder()
 
 void MainWindow::openFolder(const QString& dir)
 {
-    saveMaskIfDirty();
-
     if (!files) {
         createFileList();
     }
@@ -364,18 +298,13 @@ void MainWindow::openFolder(const QString& dir)
     image->setImage(QImage());
     image->resetZoomAndPan();
 
-    const QString maskFilenameSuffix = getMaskFilenameSuffix();
-    const QString inferenceResultFilenameSuffix = getInferenceResultFilenameSuffix();
-
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filename = it.next();
-        const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
-        const auto isInferenceResultFilename = [&]() { return filename.right(inferenceResultFilenameSuffix.length()) == inferenceResultFilenameSuffix; };
-        if (!isMaskFilename() && !isInferenceResultFilename()) {
+        {
             QListWidgetItem* item = new QListWidgetItem(filename, files);
-            QFileInfo maskFileInfo(getMaskFilename(filename));
-            if (maskFileInfo.exists() && maskFileInfo.isFile()) {
+            QFileInfo annotationFileInfo(getAnnotationPathFilename(filename));
+            if (annotationFileInfo.exists() && annotationFileInfo.isFile()) {
                 item->setTextColor(Qt::black);
             }
             else {
@@ -389,15 +318,6 @@ void MainWindow::openFolder(const QString& dir)
     currentWorkingFolder = dir;
 
     addRecentFolderMenuItem(dir);
-
-    loadClassList();
-
-    if (annotationClassItems.empty()) {
-        // Add sample classes
-        addNewClass("Clean",        QColor(0,   255, 0,  64));
-        addNewClass("Minor defect", QColor(255, 255, 0, 128));
-        addNewClass("Major defect", QColor(255, 0,   0, 128));
-    }
 
     QApplication::restoreOverrideCursor();
 }
@@ -467,8 +387,6 @@ void MainWindow::onFileActivated(const QModelIndex& index)
 
 void MainWindow::loadFile(QListWidgetItem* item)
 {
-    saveMaskIfDirty();
-
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
@@ -480,7 +398,6 @@ void MainWindow::loadFile(QListWidgetItem* item)
     const auto readImage = [](const QString& filename) { return QImage(filename); };
 
     QFuture<QImage> imageFuture = QtConcurrent::run(readImage, currentImageFile);
-    QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(currentImageFile));
 
     const auto readResults = [](const QString& filename) {
         InferenceResults results;
@@ -511,6 +428,7 @@ void MainWindow::loadFile(QListWidgetItem* item)
                 color.value("g").toInt(),
                 color.value("b").toInt()
             ));
+            result.pen.setWidth(2);
 
             const QJsonArray paths = colorAndPaths.value("color_paths").toArray();
             results.results.reserve(paths.size());
@@ -531,27 +449,25 @@ void MainWindow::loadFile(QListWidgetItem* item)
         return results;
     };
 
+    auto annotationsFuture = QtConcurrent::run(readResults, getAnnotationPathFilename(currentImageFile));
     auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(currentImageFile));
 
     {
-        QImage mask = maskFuture.result();
-        currentMask = QPixmap::fromImage(mask);
-
         QResultImageView::DelayedRedrawToken delayedRedrawToken;
 
         image->setImage(imageFuture.result(), &delayedRedrawToken);
-        image->setMask(mask, &delayedRedrawToken);
 
+        currentAnnotations = annotationsFuture.result();
         currentResults = resultsFuture.result();
 
+        if (!currentAnnotations.error.isEmpty()) {
+            QMessageBox::warning(nullptr, tr("Error"), currentAnnotations.error);
+        }
         if (!currentResults.error.isEmpty()) {
             QMessageBox::warning(nullptr, tr("Error"), currentResults.error);
         }
 
-        if (resultsVisible->isChecked()) {
-            image->setResults(currentResults.results, &delayedRedrawToken);
-        }
-        resultsVisible->setEnabled(!currentResults.results.empty());
+        updateResults(&delayedRedrawToken);
     }
 
     QApplication::restoreOverrideCursor();
@@ -561,82 +477,37 @@ void MainWindow::onPanButtonToggled(bool toggled)
 {
     if (toggled) {
         image->setLeftMouseMode(QResultImageView::LeftMouseMode::Pan);
-        bucketFillCheckbox->setChecked(false); // Disable bucket fill, just to prevent accidents
     }
-
-    bucketFillCheckbox->setEnabled(!toggled);
 }
 
 void MainWindow::onAnnotateButtonToggled(bool toggled)
 {
     if (toggled) {
-        if (annotationClasses->count() == 0) {
-            QMessageBox::warning(this, tr("Error"), tr("Add a class first"));
-        }
-        else {
-            if (currentlySelectedAnnotationClassItem == nullptr) {
-                QListWidgetItem* firstItem = annotationClasses->item(0);
-                firstItem->setSelected(true);
-                onAnnotationClassClicked(firstItem);
-            }
-
-            image->setLeftMouseMode(QResultImageView::LeftMouseMode::Annotate);
-        }
+        image->setLeftMouseMode(QResultImageView::LeftMouseMode::Annotate);
     }
 }
 
-void MainWindow::onBucketFillToggled(bool toggled)
+void MainWindow::onEraseAnnotationsButtonClicked()
 {
-    image->setFloodFillMode(toggled);
-}
+    annotationUndoBuffer.push_back(currentAnnotations.results);
+    limitUndoOrRedoBufferSize(annotationUndoBuffer);
 
-void MainWindow::onEraseAnnotationsButtonToggled(bool toggled)
-{
-    if (toggled) {
-        image->setLeftMouseMode(QResultImageView::LeftMouseMode::EraseAnnotations);
-    }
-}
+    currentAnnotations.results.clear();
+    image->setAnnotations(currentAnnotations.results);
 
-void MainWindow::onAnnotationClassClicked(QListWidgetItem* item)
-{
-    annotateButton->setChecked(true);
+    annotationRedoBuffer.clear();
 
-    for (const ClassItem& classItem : annotationClassItems) {
-        if (item == classItem.listWidgetItem) {
-            currentlySelectedAnnotationClassItem = item;
-            currentAnnotationColor = classItem.color;
-            image->setAnnotationColor(currentAnnotationColor);
-            return;
-        }
-    }
+    updateUndoRedoMenuItemStatus();
 
-    panButton->setChecked(true);
-    QMessageBox::warning(this, tr("Error"), tr("No annotation class item found"));
-}
+    updateResults();
 
-void MainWindow::onMarkingRadiusChanged(int i)
-{
-    image->setMarkingRadius(i);
-}
-
-void MainWindow::onMarkingsVisible(bool toggled)
-{
-    onPostponeMaskUpdate();
-
-    image->setMaskVisible(toggled);
+    saveCurrentAnnotation();
 }
 
 void MainWindow::onRightMousePanButtonToggled(bool toggled)
 {
     if (toggled) {
         image->setRightMouseMode(QResultImageView::RightMouseMode::Pan);
-    }
-}
-
-void MainWindow::onRightMouseEraseAnnotationsButtonToggled(bool toggled)
-{
-    if (toggled) {
-        image->setRightMouseMode(QResultImageView::RightMouseMode::EraseAnnotations);
     }
 }
 
@@ -647,17 +518,38 @@ void MainWindow::onRightMouseResetViewButtonToggled(bool toggled)
     }
 }
 
+void MainWindow::onMakeAnnotationsVisible(bool visible)
+{
+    disconnect(annotationsVisible, SIGNAL(toggled(bool)), this, SLOT(onAnnotationsVisible(bool)));
+    annotationsVisible->setChecked(visible);
+    connect(annotationsVisible, SIGNAL(toggled(bool)), this, SLOT(onAnnotationsVisible(bool)));
+}
+
+void MainWindow::onAnnotationsVisible(bool toggled)
+{
+    updateResults();
+}
+
 void MainWindow::onResultsVisible(bool toggled)
 {
-    onPostponeMaskUpdate();
+    updateResults();
+}
 
-    if (toggled) {
-        image->setResults(currentResults.results);
+void MainWindow::updateResults(QResultImageView::DelayedRedrawToken* delayedRedrawToken)
+{
+    currentlyShownPaths.clear();
+    if (annotationsVisible->isChecked()) {
+        std::copy(currentAnnotations.results.begin(), currentAnnotations.results.end(), std::back_inserter(currentlyShownPaths));
     }
-    else {
-        std::vector<QResultImageView::Result> emptyResults;
-        image->setResults(emptyResults);
+    if (resultsVisible->isChecked()) {
+        std::copy(currentResults.results.begin(), currentResults.results.end(), std::back_inserter(currentlyShownPaths));
     }
+    image->setResults(currentlyShownPaths, delayedRedrawToken);
+
+    annotationsVisible->setEnabled(!currentAnnotations.results.empty());
+    resultsVisible->setEnabled(!currentResults.results.empty());
+
+    eraseAnnotationsButton->setEnabled(!currentAnnotations.results.empty());
 }
 
 void MainWindow::onYardstickVisible(bool toggled)
@@ -670,86 +562,97 @@ void MainWindow::onYardstickVisible(bool toggled)
     }
 }
 
-void MainWindow::onMaskUpdated()
+void MainWindow::onAnnotationUpdated()
 {
-    maskDirty = true;
+    annotationUndoBuffer.push_back(currentAnnotations.results);
+    limitUndoOrRedoBufferSize(annotationUndoBuffer);
 
-    ++saveMaskPendingCounter;
+    const QRectF annotation = image->getAnnotatedSourceRect();
 
-    QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+    currentAnnotations.results.resize(1);
+    currentAnnotations.results[0].pen = QPen(Qt::darkGreen);
+    currentAnnotations.results[0].pen.setWidth(2);
+    currentAnnotations.results[0].contour.resize(4);
+    currentAnnotations.results[0].contour[0] = annotation.topLeft();
+    currentAnnotations.results[0].contour[1] = annotation.topRight();
+    currentAnnotations.results[0].contour[2] = annotation.bottomRight();
+    currentAnnotations.results[0].contour[3] = annotation.bottomLeft();
 
-    if (currentImageFileItem != nullptr) {
-        currentImageFileItem->setTextColor(Qt::black); // now we will have a mask file
-    }
-
-    maskUndoBuffer.push_back(currentMask);
-    limitUndoOrRedoBufferSize(maskUndoBuffer);
-
-    currentMask = image->getMask();
-
-    maskRedoBuffer.clear();
+    annotationRedoBuffer.clear();
 
     updateUndoRedoMenuItemStatus();
+
+    updateResults();
+
+    saveCurrentAnnotation();
 }
 
-void MainWindow::onPostponeMaskUpdate()
+void MainWindow::saveCurrentAnnotation()
 {
-    if (maskDirty) {
-        ++saveMaskPendingCounter;
-        QTimer::singleShot(10000, this, SLOT(onSaveMask()));
-    }
-}
-
-void MainWindow::onSaveMask()
-{
-    if (saveMaskPendingCounter > 0) {
-        Q_ASSERT(maskDirty);
-
-        --saveMaskPendingCounter;
-
-        if (saveMaskPendingCounter == 0) {
-            saveMask();
-        }
-    }
-}
-
-void MainWindow::saveMaskIfDirty()
-{
-    if (maskDirty) {
-        saveMask();
-    }
-}
-
-void MainWindow::saveMask()
-{
-    assert(maskDirty);
-
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
-    QFile file(getMaskFilename(currentImageFile));
-    file.open(QIODevice::WriteOnly);
-    image->getMask().save(&file, "PNG");
+    if (!currentAnnotations.results.empty()) {
+        QJsonArray json;
+
+        {
+            for (const auto& annotationItem : currentAnnotations.results) {
+                QJsonObject colorObject;
+                colorObject["r"] = annotationItem.pen.color().red();
+                colorObject["g"] = annotationItem.pen.color().green();
+                colorObject["b"] = annotationItem.pen.color().blue();
+                colorObject["a"] = annotationItem.pen.color().alpha();
+                QJsonArray colorPathsArray;
+                QJsonArray colorPathArray;
+                for (const QPointF& point : annotationItem.contour) {
+                    QJsonObject pointObject;
+                    pointObject["x"] = point.x();
+                    pointObject["y"] = point.y();
+                    colorPathArray.append(pointObject);
+                }
+                colorPathsArray.append(colorPathArray);
+                QJsonObject annotationObject;
+                annotationObject["color"] = colorObject;
+                annotationObject["color_paths"] = colorPathsArray;
+                json.append(annotationObject);
+            }
+        }
+
+        if (!currentImageFile.isEmpty()) {
+            const QString filename = getAnnotationPathFilename(currentImageFile);
+            QFile file(filename);
+
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(QJsonDocument(json).toJson());
+            }
+            else {
+                const QString text = tr("Couldn't open file \"%1\" for writing").arg(filename);
+                QMessageBox::warning(nullptr, tr("Error"), text);
+            }
+        }
+
+        if (currentImageFileItem != nullptr) {
+            currentImageFileItem->setTextColor(Qt::black); // now we will have an annotation file
+        }
+    }
+    else {
+        const QString filename = getAnnotationPathFilename(currentImageFile);
+        std::vector<wchar_t> buffer(filename.length() + 1);
+        filename.toWCharArray(buffer.data());
+        buffer.back() = L'\0';
+        move_file_to_trash(buffer.data());
+
+        if (currentImageFileItem != nullptr) {
+            currentImageFileItem->setTextColor(Qt::gray); // we no longer have an annotation file
+        }
+    }
 
     QApplication::restoreOverrideCursor();
-
-    maskDirty = false;
-    saveMaskPendingCounter = 0;
 }
 
-QString MainWindow::getMaskFilenameSuffix()
+QString MainWindow::getAnnotationPathFilename(const QString& baseImageFilename)
 {
-    return "_mask.png";
-}
-
-QString MainWindow::getMaskFilename(const QString& baseImageFilename)
-{
-    return baseImageFilename + getMaskFilenameSuffix();
-}
-
-QString MainWindow::getInferenceResultFilenameSuffix()
-{
-    return "_result.png";
+    return baseImageFilename + "_annotation_path.json";
 }
 
 QString MainWindow::getInferenceResultPathFilename(const QString& baseImageFilename)
@@ -757,190 +660,11 @@ QString MainWindow::getInferenceResultPathFilename(const QString& baseImageFilen
     return baseImageFilename + "_result_path.json";
 }
 
-void MainWindow::onAddClass()
-{
-    if (currentWorkingFolder.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Open some folder first");
-        return;
-    }
-
-    bool ok = false;
-    QString newClass = QInputDialog::getText(this, tr("Add new class"), tr("Enter the name of the new class"), QLineEdit::Normal, QString(), &ok);
-
-    if (ok) {
-        if (newClass.isEmpty()) {
-            QMessageBox::critical(this, tr("Error"), tr("The class name cannot be empty."));
-        }
-        else {
-            const QColor color = QColorDialog::getColor(Qt::white, this, tr("Pick the color of the new class \"%1\"").arg(newClass), QColorDialog::ShowAlphaChannel);
-            if (color.isValid()) {
-                addNewClass(newClass, color);
-                saveClassList();
-            }
-        }
-    }
-}
-
-void MainWindow::onRenameClass()
-{
-    if (currentWorkingFolder.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Open some folder first");
-        return;
-    }
-
-    if (currentlySelectedAnnotationClassItem == nullptr) {
-        QMessageBox::warning(this, "Error", "No class selected");
-    }
-
-    int row = 0, rowCount = annotationClasses->count();
-    for (auto i = annotationClassItems.begin(), end = annotationClassItems.end(); i != end && row < rowCount; ++i, ++row) {
-        ClassItem& classItem = *i;
-        if (currentlySelectedAnnotationClassItem == classItem.listWidgetItem) {
-            bool ok = false;
-            const QString newName = QInputDialog::getText(this, tr("Enter new name"),
-                                                          tr("Please enter a new name for class \"%1\":").arg(classItem.className),
-                                                          QLineEdit::Normal, classItem.className, &ok);
-            if (ok) {
-                if (newName.isEmpty()) {
-                    QMessageBox::critical(this, tr("Error"), tr("The class name cannot be empty."));
-                }
-                else {
-                    annotationClasses->item(row)->setText(newName);
-                    classItem.className = newName;
-                    saveClassList();
-                }
-            }
-            return;
-        }
-    }
-
-    panButton->setChecked(true);
-    QMessageBox::warning(this, tr("Error"), tr("No annotation class item found"));
-}
-
-void MainWindow::onRemoveClass()
-{
-    if (currentWorkingFolder.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Open some folder first");
-        return;
-    }
-
-    if (currentlySelectedAnnotationClassItem == nullptr) {
-        QMessageBox::warning(this, "Error", "No class selected");
-    }
-
-    int row = 0, rowCount = annotationClasses->count();
-    for (auto i = annotationClassItems.begin(), end = annotationClassItems.end(); i != end && row < rowCount; ++i, ++row) {
-        const ClassItem& classItem = *i;
-        if (currentlySelectedAnnotationClassItem == classItem.listWidgetItem) {
-            if (QMessageBox::question(this, tr("Please confirm"), tr("Are you sure you want to remove class \"%1\"?").arg(classItem.className)) == QMessageBox::Yes) {
-                QListWidgetItem* item = annotationClasses->takeItem(row);
-                delete item;
-                annotationClassItems.erase(i);
-                saveClassList();
-            }
-            return;
-        }
-    }
-
-    panButton->setChecked(true);
-    QMessageBox::warning(this, tr("Error"), tr("No annotation class item found"));
-}
-
-void MainWindow::addNewClass(const QString& className, QColor color)
-{
-    QStringList columns;
-    columns.append(className);
-
-    ClassItem classItem;
-    classItem.className = className;
-    classItem.color = color;
-    classItem.listWidgetItem = new QListWidgetItem(className, annotationClasses);
-    classItem.listWidgetItem->setBackgroundColor(color);
-
-    const QColor hslColor = color.toHsl();
-
-    if (hslColor.lightness() < 128) {
-        classItem.listWidgetItem->setTextColor(Qt::white);
-    }
-
-    if (annotationClassItems.empty()) {
-        classItem.listWidgetItem->setSelected(true);
-    }
-
-    annotationClassItems.push_back(classItem);
-}
-
-QString getClassListFilename(const QString& currentWorkingFolder)
-{
-    return currentWorkingFolder + "/anno_classes.json";
-}
-
-void MainWindow::loadClassList()
-{
-    const QString filename = getClassListFilename(currentWorkingFolder);
-    QFile file(filename);
-
-    if (file.open(QIODevice::ReadOnly)) {
-
-        annotationClasses->clear();
-        annotationClassItems.clear();
-
-        const QJsonDocument doc(QJsonDocument::fromJson(file.readAll()));
-        const QJsonArray classArray = doc.object()["anno_classes"].toArray();
-        const int classCount = classArray.size();
-        for (int i = 0; i < classCount; ++i) {
-            const QJsonObject classObject = classArray[i].toObject();
-            const QJsonObject colorObject = classObject["color"].toObject();
-            const QString name = classObject["name"].toString();
-            const QColor color(
-                colorObject["red"].toInt(),
-                colorObject["green"].toInt(),
-                colorObject["blue"].toInt(),
-                colorObject["alpha"].toInt()
-            );
-            addNewClass(name, color);
-        }
-    }
-}
-
-void MainWindow::saveClassList() const
-{
-    QJsonObject json;
-
-    {
-        QJsonArray classArray;
-        for (const ClassItem& classItem : annotationClassItems) {
-            QJsonObject classObject;
-            classObject["name"] = classItem.className;
-            QJsonObject colorObject;
-            colorObject["red"] = classItem.color.red();
-            colorObject["green"] = classItem.color.green();
-            colorObject["blue"] = classItem.color.blue();
-            colorObject["alpha"] = classItem.color.alpha();
-            classObject["color"] = colorObject;
-            classArray.append(classObject);
-        }
-        json["anno_classes"] = classArray;
-    }
-
-    const QString filename = getClassListFilename(currentWorkingFolder);
-    QFile file(filename);
-
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(json).toJson());
-    }
-    else {
-        const QString text = tr("Couldn't open file \"%1\" for writing").arg(filename);
-        QMessageBox::warning(nullptr, tr("Error"), text);
-    }
-}
-
 void MainWindow::keyPressEvent(QKeyEvent* event)
 {
     const int key = event->key();
     if (key == Qt::Key_Space) {
-        markingsVisible->toggle();
+        annotationsVisible->toggle();
         resultsVisible->toggle();
         //yardstickVisible->toggle();
     }
@@ -953,22 +677,11 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     else if (key == Qt::Key_E) {
         eraseAnnotationsButton->setChecked(true);
     }
-    else if (key >= Qt::Key_0 && key <= Qt::Key_9) {
-        int index = key - Qt::Key_0;
-        if (index >= 0 && index < annotationClassItems.size()) {
-            QListWidgetItem* itemToSelect = annotationClassItems[index].listWidgetItem;
-            itemToSelect->setSelected(true);
-            onAnnotationClassClicked(itemToSelect);
-        }
-    }
     else if (key == Qt::Key_V) {
-        markingsVisible->toggle();
+        annotationsVisible->toggle();
     }
     else if (key == Qt::Key_R) {
         resultsVisible->toggle();
-    }
-    else if (key == Qt::Key_B) {
-        bucketFillCheckbox->toggle();
     }
     else if (key == Qt::Key_S) {
         reverseFileOrder = !reverseFileOrder;
@@ -991,9 +704,9 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         }
     }
     else if (key == Qt::Key_Y) {
-        if (image) {
-            yardstickVisible->toggle();
-        }
+        //if (image) {
+        //    yardstickVisible->toggle();
+        //}
     }
     else if (key == Qt::Key_Delete) {
         if (files->hasFocus()) {
@@ -1049,95 +762,57 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 
 void MainWindow::onUndo()
 {
-    if (!maskUndoBuffer.empty()) {
-        const bool requireWaitCursor = currentMask.size().width() * currentMask.size().height() > 1024 * 1024;
-        if (requireWaitCursor) {
-            QApplication::setOverrideCursor(Qt::WaitCursor);
-        }
+    if (!annotationUndoBuffer.empty()) {
+        annotationRedoBuffer.push_back(currentAnnotations.results);
+        limitUndoOrRedoBufferSize(annotationRedoBuffer);
 
-        maskRedoBuffer.push_back(currentMask);
-        limitUndoOrRedoBufferSize(maskRedoBuffer);
+        currentAnnotations.results = annotationUndoBuffer.back();
+        updateResults();
 
-        currentMask = maskUndoBuffer.back();
-        image->setMask(currentMask.toImage());
-        maskUndoBuffer.pop_back();
+        annotationUndoBuffer.pop_back();
 
         updateUndoRedoMenuItemStatus();
 
-        maskDirty = true;
-        ++saveMaskPendingCounter;
-        QTimer::singleShot(10000, this, SLOT(onSaveMask()));
-
-        if (requireWaitCursor) {
-            QApplication::restoreOverrideCursor();
-        }
+        saveCurrentAnnotation();
     }
 }
 
 void MainWindow::onRedo()
 {
-    if (!maskRedoBuffer.empty()) {
-        const bool requireWaitCursor = currentMask.size().width() * currentMask.size().height() > 1024 * 1024;
-        if (requireWaitCursor) {
-            QApplication::setOverrideCursor(Qt::WaitCursor);
-        }
+    if (!annotationRedoBuffer.empty()) {
+        annotationUndoBuffer.push_back(currentAnnotations.results);
+        limitUndoOrRedoBufferSize(annotationUndoBuffer);
 
-        maskUndoBuffer.push_back(currentMask);
-        limitUndoOrRedoBufferSize(maskUndoBuffer);
+        currentAnnotations.results = annotationRedoBuffer.back();
+        updateResults();
 
-        currentMask = maskRedoBuffer.back();
-        image->setMask(currentMask.toImage());
-        maskRedoBuffer.pop_back();
+        annotationRedoBuffer.pop_back();
 
         updateUndoRedoMenuItemStatus();
 
-        maskDirty = true;
-        ++saveMaskPendingCounter;
-        QTimer::singleShot(10000, this, SLOT(onSaveMask()));
-
-        if (requireWaitCursor) {
-            QApplication::restoreOverrideCursor();
-        }
+        saveCurrentAnnotation();
     }
 }
 
 void MainWindow::resetUndoBuffers()
 {
-    maskUndoBuffer.clear();
-    maskRedoBuffer.clear();
+    annotationUndoBuffer.clear();
+    annotationRedoBuffer.clear();
     updateUndoRedoMenuItemStatus();
 }
 
 void MainWindow::updateUndoRedoMenuItemStatus()
 {
-    ui->actionUndo->setEnabled(!maskUndoBuffer.empty());
-    ui->actionRedo->setEnabled(!maskRedoBuffer.empty());
+    ui->actionUndo->setEnabled(!annotationUndoBuffer.empty());
+    ui->actionRedo->setEnabled(!annotationRedoBuffer.empty());
 }
 
-void MainWindow::limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer)
+void MainWindow::limitUndoOrRedoBufferSize(std::deque<std::vector<QResultImageView::Result>>& buffer)
 {
-    const size_t maxBufferSizeInPixels = 256 * 1024 * 1024; // 256 Mpixels ought to lead to a buffer size of around 1 GB
-    size_t bufferSizeInPixels = 0;
-    for (const QPixmap& item : buffer) {
-        bufferSizeInPixels += item.size().width() * item.size().height();
-    }
-    while (buffer.size() > 1 && bufferSizeInPixels > maxBufferSizeInPixels) {
-        const QPixmap& itemToRemove = buffer.front();
-        bufferSizeInPixels -= itemToRemove.size().width() * itemToRemove.size().height();
+    const size_t maxBufferSize = 1024;
+    while (buffer.size() > maxBufferSize) {
         buffer.pop_front();
     }
-}
-
-void MainWindow::onNewMarkingRadius(int newMarkingRadius)
-{
-    markingRadius->setValue(newMarkingRadius);
-}
-
-void MainWindow::onAnnotationsVisible(bool visible)
-{
-    disconnect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
-    markingsVisible->setChecked(visible);
-    connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
 }
 
 void MainWindow::onAbout()

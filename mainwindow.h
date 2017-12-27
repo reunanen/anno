@@ -38,26 +38,16 @@ private slots:
     void onFileActivated(const QModelIndex& index);
     void onPanButtonToggled(bool toggled);
     void onAnnotateButtonToggled(bool toggled);
-    void onBucketFillToggled(bool toggled);
-    void onEraseAnnotationsButtonToggled(bool toggled);
-    void onAnnotationClassClicked(QListWidgetItem* item);
-    void onMarkingRadiusChanged(int i);
-    void onMarkingsVisible(bool toggled);
+    void onEraseAnnotationsButtonClicked();
     void onRightMousePanButtonToggled(bool toggled);
-    void onRightMouseEraseAnnotationsButtonToggled(bool toggled);
     void onRightMouseResetViewButtonToggled(bool toggled);
+    void onMakeAnnotationsVisible(bool visible);
+    void onAnnotationsVisible(bool toggled);
     void onResultsVisible(bool toggled);
     void onYardstickVisible(bool toggled);
-    void onMaskUpdated();
-    void onPostponeMaskUpdate();
-    void onSaveMask();
-    void onAddClass();
-    void onRenameClass();
-    void onRemoveClass();
+    void onAnnotationUpdated();
     void onUndo();
     void onRedo();
-    void onNewMarkingRadius(int newMarkingRadius);
-    void onAnnotationsVisible(bool visible);
     void onAbout();
 
 private:
@@ -65,28 +55,21 @@ private:
     void createToolList();
     void createImageView();
 
+    void updateResults(QResultImageView::DelayedRedrawToken* delayedRedrawToken = nullptr);
+
     void openFolder(const QString& dir);
     void addRecentFolderMenuItem(const QString& dir);
     void saveRecentFolders();
-    void saveMaskIfDirty();
-    void saveMask();
+    void saveCurrentAnnotation();
 
     void loadFile(QListWidgetItem* item);
 
-    static QString getMaskFilenameSuffix();
-    static QString getMaskFilename(const QString& baseImageFilename);
-
-    static QString getInferenceResultFilenameSuffix();
+    static QString getAnnotationPathFilename(const QString& baseImageFilename);
     static QString getInferenceResultPathFilename(const QString& baseImageFilename);
-
-    void addNewClass(const QString& className, QColor color);
-
-    void loadClassList();
-    void saveClassList() const;
 
     void resetUndoBuffers();
     void updateUndoRedoMenuItemStatus();
-    void limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer);
+    void limitUndoOrRedoBufferSize(std::deque<std::vector<QResultImageView::Result>>& buffer);
 
     Ui::MainWindow* ui;
     QListWidget* files = nullptr;
@@ -100,23 +83,11 @@ private:
 
     QRadioButton* panButton = nullptr;
     QRadioButton* annotateButton = nullptr;
-    QCheckBox* bucketFillCheckbox = nullptr;
-    QRadioButton* eraseAnnotationsButton = nullptr;
+    QPushButton* eraseAnnotationsButton = nullptr;
 
-    QListWidget* annotationClasses = nullptr;
-    QListWidgetItem* currentlySelectedAnnotationClassItem = nullptr;
-    QColor currentAnnotationColor = Qt::transparent;
-
-    std::vector<ClassItem> annotationClassItems;
-
-    QSpinBox* markingRadius = nullptr;
-    QCheckBox* markingsVisible = nullptr;
-    QPushButton* addClassButton = nullptr;
-    QPushButton* renameClassButton = nullptr;
-    QPushButton* removeClassButton = nullptr;
+    QCheckBox* annotationsVisible = nullptr;
 
     QRadioButton* rightMousePanButton = nullptr;
-    QRadioButton* rightMouseEraseAnnotationsButton = nullptr;
     QRadioButton* rightMouseResetViewButton = nullptr;
 
     QCheckBox* resultsVisible = nullptr;
@@ -133,15 +104,13 @@ private:
     };
 
     InferenceResults currentResults;
-
-    bool maskDirty = false;
-    int saveMaskPendingCounter = 0;
+    InferenceResults currentAnnotations;
+    std::vector<QResultImageView::Result> currentlyShownPaths;
 
     QMenu* recentFoldersMenu;
 
-    QPixmap currentMask;
-    std::deque<QPixmap> maskUndoBuffer;
-    std::deque<QPixmap> maskRedoBuffer;
+    std::deque<std::vector<QResultImageView::Result>> annotationUndoBuffer;
+    std::deque<std::vector<QResultImageView::Result>> annotationRedoBuffer;
 
     QWidget* aboutDialog = nullptr;
 
