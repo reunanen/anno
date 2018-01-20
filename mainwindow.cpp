@@ -758,6 +758,22 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
             }
         }
     }
+    else if (key == Qt::Key_Up) {
+        const int currentRow = files->currentRow();
+        const int newRow = currentRow - 1;
+        if (newRow >= 0 && newRow < files->count()) {
+            files->setCurrentRow(newRow);
+            loadFile(files->item(newRow));
+        }
+    }
+    else if (key == Qt::Key_Down) {
+        const int currentRow = files->currentRow();
+        const int newRow = currentRow + 1;
+        if (newRow >= 0 && newRow < files->count()) {
+            files->setCurrentRow(newRow);
+            loadFile(files->item(newRow));
+        }
+    }
 }
 
 void MainWindow::onUndo()
