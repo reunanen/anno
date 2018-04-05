@@ -301,7 +301,9 @@ void MainWindow::openFolder(const QString& dir)
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filename = it.next();
-        {
+        const bool isResultImage = filename.length() > 11 && filename.right(11) == "_result.png";
+        const bool isMaskImage = filename.length() > 9 && filename.right(9) == "_mask.png";
+        if (!isResultImage && !isMaskImage){
             QListWidgetItem* item = new QListWidgetItem(filename, files);
             QFileInfo annotationFileInfo(getAnnotationPathFilename(filename));
             if (annotationFileInfo.exists() && annotationFileInfo.isFile()) {
