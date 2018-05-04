@@ -58,6 +58,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
     connect(ui->actionUndo, SIGNAL(triggered()), this, SLOT(onUndo()));
     connect(ui->actionRedo, SIGNAL(triggered()), this, SLOT(onRedo()));
+    connect(ui->actionRestoreDefaultWindowPositions, SIGNAL(triggered()), this, SLOT(onRestoreDefaultWindowPositions()));
     connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(onAbout()));
 
     QStringList recentFolders = settings.value("recentFolders").toStringList();
@@ -99,18 +100,19 @@ void MainWindow::init()
         onOpenFolder();
     }
 
+    showMaximized();
+
+    defaultGeometry = saveGeometry();
+    defaultState = saveState();
+
+    if (files->count() > 0) {
+        QListWidgetItem* firstFile = files->item(0);
+        firstFile->setSelected(true);
+        onFileClicked(firstFile);
+    }
+
     const bool geometryRestored = restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     const bool stateRestored = restoreState(settings.value("mainWindowState").toByteArray());
-
-    if (!geometryRestored && !stateRestored) {
-        showMaximized();
-
-        if (files->count() > 0) {
-            QListWidgetItem* firstFile = files->item(0);
-            firstFile->setSelected(true);
-            onFileClicked(firstFile);
-        }
-    }
 
     setFocusPolicy(Qt::StrongFocus);
 }
@@ -834,6 +836,12 @@ void MainWindow::limitUndoOrRedoBufferSize(std::deque<std::vector<QResultImageVi
     while (buffer.size() > maxBufferSize) {
         buffer.pop_front();
     }
+}
+
+void MainWindow::onRestoreDefaultWindowPositions()
+{
+    restoreGeometry(defaultGeometry);
+    restoreState(defaultState);
 }
 
 void MainWindow::onAbout()

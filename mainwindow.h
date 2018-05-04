@@ -48,6 +48,7 @@ private slots:
     void onAnnotationUpdated();
     void onUndo();
     void onRedo();
+    void onRestoreDefaultWindowPositions();
     void onAbout();
 
 private:
@@ -115,6 +116,9 @@ private:
     QWidget* aboutDialog = nullptr;
 
     bool reverseFileOrder = false;
+
+    QByteArray defaultGeometry;
+    QByteArray defaultState;
 };
 
 #endif // MAINWINDOW_H

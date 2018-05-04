@@ -49,8 +49,15 @@
     </property>
     <addaction name="actionAbout"/>
    </widget>
+   <widget class="QMenu" name="menuWindow">
+    <property name="title">
+     <string>&amp;Window</string>
+    </property>
+    <addaction name="actionRestoreDefaultWindowPositions"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
+   <addaction name="menuWindow"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
@@ -94,6 +101,11 @@
   <action name="actionAbout">
    <property name="text">
     <string>&amp;About anno ...</string>
+   </property>
+  </action>
+  <action name="actionRestoreDefaultWindowPositions">
+   <property name="text">
+    <string>Restore default positions</string>
    </property>
   </action>
  </widget>
