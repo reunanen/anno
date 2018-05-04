@@ -80,6 +80,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     settings.setValue("mainWindowGeometry", saveGeometry());
     settings.setValue("mainWindowState", saveState());
     settings.setValue("reverseFileOrder", reverseFileOrder);
+    settings.setValue("annotateThings", annotateThings->isChecked());
 
     if (markingRadius) {
         settings.setValue("markingRadius", markingRadius->value());
@@ -308,6 +309,30 @@ void MainWindow::createToolList()
         rightMouseButtonActions->setLayout(rightMouseButtonActionsLayout);
     }
 
+    QGroupBox* annotationModeWidget = new QGroupBox(tr("Annotation mode"));
+    {
+        auto* annotationModeLayout = new QHBoxLayout;
+
+        annotateStuff = new QRadioButton("&Stuff", this);
+        annotateThings = new QRadioButton("Thin&gs", this);
+
+        layout->addWidget(annotateStuff);
+        layout->addWidget(annotateThings);
+
+        bool thingsMode = settings.value("annotateThings", 0).toBool();
+
+        connect(annotateStuff, SIGNAL(toggled(bool)), this, SLOT(onAnnotateStuff(bool)));
+        connect(annotateThings, SIGNAL(toggled(bool)), this, SLOT(onAnnotateThings(bool)));
+
+        annotateStuff->setChecked(!thingsMode);
+        annotateThings->setChecked(thingsMode);
+
+        annotationModeLayout->addWidget(annotateStuff);
+        annotationModeLayout->addWidget(annotateThings);
+
+        annotationModeWidget->setLayout(annotationModeLayout);
+    }
+
     {
         resultsVisible = new QCheckBox("&Results visible", this);
         resultsVisible->setChecked(true);
@@ -323,6 +348,9 @@ void MainWindow::createToolList()
     }
 
     layout->addWidget(markingsVisible);
+    layout->addSpacing(10);
+    layout->addWidget(annotationModeWidget);
+    layout->addSpacing(5);
     layout->addWidget(markingRadiusWidget);
     layout->addWidget(leftMouseButtonActions);
     layout->addSpacing(10);
@@ -581,6 +609,21 @@ void MainWindow::loadFile(QListWidgetItem* item)
     QApplication::restoreOverrideCursor();
 }
 
+void MainWindow::onAnnotateStuff(bool toggled)
+{
+    markingRadius->setEnabled(toggled);
+
+    bucketFillCheckbox->setChecked(false); // Disable bucket fill, just to prevent accidents
+
+    updateBucketFillCheckboxState();
+}
+
+void MainWindow::onAnnotateThings(bool toggled)
+{
+    markingRadius->setEnabled(!toggled);
+    updateBucketFillCheckboxState();
+}
+
 void MainWindow::onPanButtonToggled(bool toggled)
 {
     if (toggled) {
@@ -588,7 +631,13 @@ void MainWindow::onPanButtonToggled(bool toggled)
         bucketFillCheckbox->setChecked(false); // Disable bucket fill, just to prevent accidents
     }
 
-    bucketFillCheckbox->setEnabled(!toggled);
+    updateBucketFillCheckboxState();
+}
+
+
+void MainWindow::updateBucketFillCheckboxState()
+{
+    bucketFillCheckbox->setEnabled(annotateStuff->isChecked() && !panButton->isChecked());
 }
 
 void MainWindow::onAnnotateButtonToggled(bool toggled)

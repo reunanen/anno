@@ -36,6 +36,8 @@ private slots:
     void onOpenRecentFolder();
     void onFileClicked(QListWidgetItem* item);
     void onFileActivated(const QModelIndex& index);
+    void onAnnotateStuff(bool toggled);
+    void onAnnotateThings(bool toggled);
     void onPanButtonToggled(bool toggled);
     void onAnnotateButtonToggled(bool toggled);
     void onBucketFillToggled(bool toggled);
@@ -89,6 +91,8 @@ private:
     void updateUndoRedoMenuItemStatus();
     void limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer);
 
+    void updateBucketFillCheckboxState();
+
     Ui::MainWindow* ui;
     QListWidget* files = nullptr;
     QResultImageView* image = nullptr;
@@ -112,6 +116,10 @@ private:
 
     QSpinBox* markingRadius = nullptr;
     QCheckBox* markingsVisible = nullptr;
+
+    QRadioButton* annotateStuff = nullptr;
+    QRadioButton* annotateThings = nullptr;
+
     QPushButton* addClassButton = nullptr;
     QPushButton* renameClassButton = nullptr;
     QPushButton* removeClassButton = nullptr;
