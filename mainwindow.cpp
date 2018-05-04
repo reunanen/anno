@@ -423,7 +423,10 @@ void MainWindow::openFolder(const QString& dir)
             const QString displayName = filename.mid(dir.length() + 1);
             QListWidgetItem* item = new QListWidgetItem(displayName, files);
             QFileInfo maskFileInfo(getMaskFilename(filename));
-            if (maskFileInfo.exists() && maskFileInfo.isFile()) {
+            QFileInfo thingAnnotationsFileInfo(getThingAnnotationsPathFilename(filename));
+            const bool maskFileExists = maskFileInfo.exists() && maskFileInfo.isFile();
+            const bool thingAnnotationsFileExists = thingAnnotationsFileInfo.exists() && thingAnnotationsFileInfo.isFile();
+            if (maskFileExists || thingAnnotationsFileExists) {
                 item->setTextColor(Qt::black);
             }
             else {
@@ -935,7 +938,7 @@ QString MainWindow::getInferenceResultFilenameSuffix()
 
 QString MainWindow::getThingAnnotationsPathFilename(const QString& baseImageFilename)
 {
-    return baseImageFilename + "_annotation_path.json";
+    return baseImageFilename + "_annotation_paths.json";
 }
 
 QString MainWindow::getInferenceResultPathFilename(const QString& baseImageFilename)
