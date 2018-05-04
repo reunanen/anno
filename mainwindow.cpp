@@ -35,6 +35,7 @@
 namespace {
     const char* companyName = "Tomaattinen";
     const char* applicationName = "anno-single-rectangle-per-image";
+    const int fullnameRole = Qt::UserRole + 0;
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -300,11 +301,12 @@ void MainWindow::openFolder(const QString& dir)
 
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
-        QString filename = it.next();
+        const QString filename = it.next();
         const bool isResultImage = filename.length() > 11 && filename.right(11) == "_result.png";
         const bool isMaskImage = filename.length() > 9 && filename.right(9) == "_mask.png";
         if (!isResultImage && !isMaskImage){
-            QListWidgetItem* item = new QListWidgetItem(filename, files);
+            const QString displayName = filename.mid(dir.length() + 1);
+            QListWidgetItem* item = new QListWidgetItem(displayName, files);
             QFileInfo annotationFileInfo(getAnnotationPathFilename(filename));
             if (annotationFileInfo.exists() && annotationFileInfo.isFile()) {
                 item->setTextColor(Qt::black);
@@ -312,6 +314,7 @@ void MainWindow::openFolder(const QString& dir)
             else {
                 item->setTextColor(Qt::gray);
             }
+            item->setData(fullnameRole, filename);
         }
     }
 
@@ -393,7 +396,7 @@ void MainWindow::loadFile(QListWidgetItem* item)
     QApplication::processEvents(); // actually update the cursor
 
     currentImageFileItem = item;
-    currentImageFile = item->text();
+    currentImageFile = item->data(fullnameRole).toString();
 
     resetUndoBuffers();
 
@@ -713,7 +716,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     else if (key == Qt::Key_Delete) {
         if (files->hasFocus()) {
             const int row = files->currentRow();
-            const QString filename = files->item(row)->text();
+            const QString filename = files->item(row)->data(fullnameRole).toString();
             if (filename.length() > 0) {
 
                 const auto confirmAndDeleteFile = [&]() {
