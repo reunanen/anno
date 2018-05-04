@@ -109,6 +109,7 @@ void MainWindow::init()
                 QListWidgetItem* file = files->item(i);
                 if (file->text() == defaultFile) {
                     defaultFileFound = true;
+                    files->scrollToItem(file, QListWidget::EnsureVisible);
                     file->setSelected(true);
                     onFileClicked(file);
                     break;
