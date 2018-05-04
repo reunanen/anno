@@ -50,8 +50,6 @@ MainWindow::MainWindow(QWidget *parent) :
     setWindowTitle("anno");
 
     const QSettings settings(companyName, applicationName);
-    restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
-    restoreState(settings.value("mainWindowState").toByteArray());
     reverseFileOrder = settings.value("reverseFileOrder").toBool();
 
     connect(ui->actionOpenFolder, SIGNAL(triggered()), this, SLOT(onOpenFolder()));
@@ -102,14 +100,31 @@ void MainWindow::init()
 
     showMaximized();
 
+    if (files->count() > 0) {
+        const QString defaultFile = settings.value("defaultFile").toString();
+        bool defaultFileFound = false;
+
+        if (!defaultFile.isEmpty()) {
+            for (int i = 0, end = files->count(); i < end; ++i) {
+                QListWidgetItem* file = files->item(i);
+                if (file->text() == defaultFile) {
+                    defaultFileFound = true;
+                    file->setSelected(true);
+                    onFileClicked(file);
+                    break;
+                }
+            }
+        }
+
+        if (!defaultFileFound) {
+            QListWidgetItem* firstFile = files->item(0);
+            firstFile->setSelected(true);
+            onFileClicked(firstFile);
+        }
+    }
+
     defaultGeometry = saveGeometry();
     defaultState = saveState();
-
-    if (files->count() > 0) {
-        QListWidgetItem* firstFile = files->item(0);
-        firstFile->setSelected(true);
-        onFileClicked(firstFile);
-    }
 
     const bool geometryRestored = restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     const bool stateRestored = restoreState(settings.value("mainWindowState").toByteArray());
@@ -399,6 +414,9 @@ void MainWindow::loadFile(QListWidgetItem* item)
 
     currentImageFileItem = item;
     currentImageFile = item->data(fullnameRole).toString();
+
+    QSettings settings(companyName, applicationName);
+    settings.setValue("defaultFile", item->text());
 
     resetUndoBuffers();
 
