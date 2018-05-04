@@ -817,7 +817,7 @@ void MainWindow::saveCurrentThingAnnotations()
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
-    if (!currentThingAnnotations.results.empty()) {
+    {
         QJsonArray json;
 
         {
@@ -858,17 +858,6 @@ void MainWindow::saveCurrentThingAnnotations()
 
         if (currentImageFileItem != nullptr) {
             currentImageFileItem->setTextColor(Qt::black); // now we will have an annotation file
-        }
-    }
-    else {
-        const QString filename = getThingAnnotationsPathFilename(currentImageFile);
-        std::vector<wchar_t> buffer(filename.length() + 1);
-        filename.toWCharArray(buffer.data());
-        buffer.back() = L'\0';
-        move_file_to_trash(buffer.data());
-
-        if (currentImageFileItem != nullptr) {
-            currentImageFileItem->setTextColor(Qt::gray); // we no longer have an annotation file
         }
     }
 
