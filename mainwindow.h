@@ -50,7 +50,8 @@ private slots:
     void onRightMouseResetViewButtonToggled(bool toggled);
     void onResultsVisible(bool toggled);
     void onYardstickVisible(bool toggled);
-    void onMaskUpdated();
+    void onAnnotationUpdated();
+    void saveCurrentThingAnnotations();
     void onPostponeMaskUpdate();
     void onSaveMask();
     void onAddClass();
@@ -79,6 +80,8 @@ private:
     static QString getMaskFilenameSuffix();
     static QString getMaskFilename(const QString& baseImageFilename);
 
+    static QString getThingAnnotationsPathFilename(const QString& baseImageFilename);
+
     static QString getInferenceResultFilenameSuffix();
     static QString getInferenceResultPathFilename(const QString& baseImageFilename);
 
@@ -90,6 +93,7 @@ private:
     void resetUndoBuffers();
     void updateUndoRedoMenuItemStatus();
     void limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer);
+    void limitUndoOrRedoBufferSize(std::deque<std::vector<QResultImageView::Result>>& buffer);
 
     void updateBucketFillCheckboxState();
 
@@ -142,6 +146,8 @@ private:
     };
 
     InferenceResults currentResults;
+    InferenceResults currentThingAnnotations;
+    std::vector<QResultImageView::Result> currentlyShownPaths;
 
     bool maskDirty = false;
     int saveMaskPendingCounter = 0;
@@ -151,6 +157,9 @@ private:
     QPixmap currentMask;
     std::deque<QPixmap> maskUndoBuffer;
     std::deque<QPixmap> maskRedoBuffer;
+
+    std::deque<std::vector<QResultImageView::Result>> annotationUndoBuffer;
+    std::deque<std::vector<QResultImageView::Result>> annotationRedoBuffer;
 
     QWidget* aboutDialog = nullptr;
 

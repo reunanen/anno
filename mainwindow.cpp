@@ -92,9 +92,9 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::init()
 {
     initImageIO();
+    createImageView();
     createToolList();
     createFileList();
-    createImageView();
 
     image->setMarkingRadius(markingRadius->value());
 
@@ -163,12 +163,12 @@ void MainWindow::createImageView()
 
     setCentralWidget(image);
 
-    connect(image, SIGNAL(maskUpdating()), this, SLOT(onPostponeMaskUpdate()));
-    connect(image, SIGNAL(maskUpdated()), this, SLOT(onMaskUpdated()));
+    connect(image, SIGNAL(annotationUpdating()), this, SLOT(onPostponeMaskUpdate()));
+    connect(image, SIGNAL(annotationUpdated()), this, SLOT(onAnnotationUpdated()));
     connect(image, SIGNAL(panned()), this, SLOT(onPostponeMaskUpdate()));
     connect(image, SIGNAL(zoomed()), this, SLOT(onPostponeMaskUpdate()));
     connect(image, SIGNAL(newMarkingRadius(int)), this, SLOT(onNewMarkingRadius(int)));
-    connect(image, SIGNAL(annotationsVisible(bool)), this, SLOT(onAnnotationsVisible(bool)));
+    connect(image, SIGNAL(makeAnnotationsVisible(bool)), this, SLOT(onAnnotationsVisible(bool)));
 }
 
 void MainWindow::createFileList()
@@ -583,6 +583,7 @@ void MainWindow::loadFile(QListWidgetItem* item)
         return results;
     };
 
+    auto thingAnnotationsFuture = QtConcurrent::run(readResults, getThingAnnotationsPathFilename(currentImageFile));
     auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(currentImageFile));
 
     {
@@ -594,10 +595,22 @@ void MainWindow::loadFile(QListWidgetItem* item)
         image->setImage(imageFuture.result(), &delayedRedrawToken);
         image->setMask(mask, &delayedRedrawToken);
 
+        currentThingAnnotations = thingAnnotationsFuture.result();
         currentResults = resultsFuture.result();
 
         if (!currentResults.error.isEmpty()) {
             QMessageBox::warning(nullptr, tr("Error"), currentResults.error);
+        }
+
+        if (currentThingAnnotations.error.isEmpty()) {
+            for (auto& result : currentThingAnnotations.results) {
+                result.pen.setWidth(2);
+            }
+
+            image->setThingAnnotations(currentThingAnnotations.results, &delayedRedrawToken);
+        }
+        else {
+            QMessageBox::warning(nullptr, tr("Error"), currentThingAnnotations.error);
         }
 
         if (resultsVisible->isChecked()) {
@@ -616,12 +629,23 @@ void MainWindow::onAnnotateStuff(bool toggled)
     bucketFillCheckbox->setChecked(false); // Disable bucket fill, just to prevent accidents
 
     updateBucketFillCheckboxState();
+
+    if (toggled) {
+        image->setAnnotationMode(QResultImageView::AnnotationMode::Stuff);
+    }
 }
 
 void MainWindow::onAnnotateThings(bool toggled)
 {
     markingRadius->setEnabled(!toggled);
+
     updateBucketFillCheckboxState();
+
+    if (toggled) {
+        saveMaskIfDirty();
+
+        image->setAnnotationMode(QResultImageView::AnnotationMode::Things);
+    }
 }
 
 void MainWindow::onPanButtonToggled(bool toggled)
@@ -696,7 +720,7 @@ void MainWindow::onMarkingsVisible(bool toggled)
 {
     onPostponeMaskUpdate();
 
-    image->setMaskVisible(toggled);
+    image->setAnnotationsVisible(toggled);
 }
 
 void MainWindow::onRightMousePanButtonToggled(bool toggled)
@@ -743,27 +767,106 @@ void MainWindow::onYardstickVisible(bool toggled)
     }
 }
 
-void MainWindow::onMaskUpdated()
+void MainWindow::onAnnotationUpdated()
 {
-    maskDirty = true;
+    if (annotateThings->isChecked()) {
+        annotationUndoBuffer.push_back(currentThingAnnotations.results);
+        limitUndoOrRedoBufferSize(annotationUndoBuffer);
 
-    ++saveMaskPendingCounter;
+        currentThingAnnotations.results = image->getThingAnnotations();
+        currentThingAnnotations.error.clear();
 
-    QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+        annotationRedoBuffer.clear();
 
-    if (currentImageFileItem != nullptr) {
-        currentImageFileItem->setTextColor(Qt::black); // now we will have a mask file
+        updateUndoRedoMenuItemStatus();
+
+        saveCurrentThingAnnotations();
+    }
+    else {
+        maskDirty = true;
+
+        ++saveMaskPendingCounter;
+
+        QTimer::singleShot(10000, this, SLOT(onSaveMask()));
+
+        if (currentImageFileItem != nullptr) {
+            currentImageFileItem->setTextColor(Qt::black); // now we will have a mask file
+        }
+
+        maskUndoBuffer.push_back(currentMask);
+        limitUndoOrRedoBufferSize(maskUndoBuffer);
+
+        currentMask = image->getMask();
+
+        maskRedoBuffer.clear();
+
+        updateUndoRedoMenuItemStatus();
+    }
+}
+
+void MainWindow::saveCurrentThingAnnotations()
+{
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QApplication::processEvents(); // actually update the cursor
+
+    if (!currentThingAnnotations.results.empty()) {
+        QJsonArray json;
+
+        {
+            for (const auto& annotationItem : currentThingAnnotations.results) {
+                QJsonObject colorObject;
+                colorObject["r"] = annotationItem.pen.color().red();
+                colorObject["g"] = annotationItem.pen.color().green();
+                colorObject["b"] = annotationItem.pen.color().blue();
+                colorObject["a"] = annotationItem.pen.color().alpha();
+                QJsonArray colorPathsArray;
+                QJsonArray colorPathArray;
+                for (const QPointF& point : annotationItem.contour) {
+                    QJsonObject pointObject;
+                    pointObject["x"] = point.x();
+                    pointObject["y"] = point.y();
+                    colorPathArray.append(pointObject);
+                }
+                colorPathsArray.append(colorPathArray);
+                QJsonObject annotationObject;
+                annotationObject["color"] = colorObject;
+                annotationObject["color_paths"] = colorPathsArray;
+                json.append(annotationObject);
+            }
+        }
+
+        if (!currentImageFile.isEmpty()) {
+            const QString filename = getThingAnnotationsPathFilename(currentImageFile);
+            QFile file(filename);
+
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(QJsonDocument(json).toJson());
+            }
+            else {
+                const QString text = tr("Couldn't open file \"%1\" for writing").arg(filename);
+                QMessageBox::warning(nullptr, tr("Error"), text);
+            }
+        }
+
+        if (currentImageFileItem != nullptr) {
+            currentImageFileItem->setTextColor(Qt::black); // now we will have an annotation file
+        }
+    }
+    else {
+        const QString filename = getThingAnnotationsPathFilename(currentImageFile);
+        std::vector<wchar_t> buffer(filename.length() + 1);
+        filename.toWCharArray(buffer.data());
+        buffer.back() = L'\0';
+        move_file_to_trash(buffer.data());
+
+        if (currentImageFileItem != nullptr) {
+            currentImageFileItem->setTextColor(Qt::gray); // we no longer have an annotation file
+        }
     }
 
-    maskUndoBuffer.push_back(currentMask);
-    limitUndoOrRedoBufferSize(maskUndoBuffer);
-
-    currentMask = image->getMask();
-
-    maskRedoBuffer.clear();
-
-    updateUndoRedoMenuItemStatus();
+    QApplication::restoreOverrideCursor();
 }
+
 
 void MainWindow::onPostponeMaskUpdate()
 {
@@ -823,6 +926,11 @@ QString MainWindow::getMaskFilename(const QString& baseImageFilename)
 QString MainWindow::getInferenceResultFilenameSuffix()
 {
     return "_result.png";
+}
+
+QString MainWindow::getThingAnnotationsPathFilename(const QString& baseImageFilename)
+{
+    return baseImageFilename + "_annotation_path.json";
 }
 
 QString MainWindow::getInferenceResultPathFilename(const QString& baseImageFilename)
@@ -1197,6 +1305,14 @@ void MainWindow::limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer)
     while (buffer.size() > 1 && bufferSizeInPixels > maxBufferSizeInPixels) {
         const QPixmap& itemToRemove = buffer.front();
         bufferSizeInPixels -= itemToRemove.size().width() * itemToRemove.size().height();
+        buffer.pop_front();
+    }
+}
+
+void MainWindow::limitUndoOrRedoBufferSize(std::deque<std::vector<QResultImageView::Result>>& buffer)
+{
+    const size_t maxBufferSize = 1024;
+    while (buffer.size() > maxBufferSize) {
         buffer.pop_front();
     }
 }
