@@ -58,6 +58,7 @@ private slots:
     void onRedo();
     void onNewMarkingRadius(int newMarkingRadius);
     void onAnnotationsVisible(bool visible);
+    void onRestoreDefaultWindowPositions();
     void onAbout();
 
 private:
@@ -146,6 +147,9 @@ private:
     QWidget* aboutDialog = nullptr;
 
     bool reverseFileOrder = false;
+
+    QByteArray defaultGeometry;
+    QByteArray defaultState;
 };
 
 #endif // MAINWINDOW_H
