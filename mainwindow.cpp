@@ -646,6 +646,8 @@ void MainWindow::onAnnotateThings(bool toggled)
 
         image->setAnnotationMode(QResultImageView::AnnotationMode::Things);
     }
+
+    updateUndoRedoMenuItemStatus();
 }
 
 void MainWindow::onPanButtonToggled(bool toggled)
@@ -656,6 +658,8 @@ void MainWindow::onPanButtonToggled(bool toggled)
     }
 
     updateBucketFillCheckboxState();
+
+    updateUndoRedoMenuItemStatus();
 }
 
 
@@ -782,7 +786,8 @@ void MainWindow::onAnnotationUpdated()
 
         saveCurrentThingAnnotations();
     }
-    else {
+
+    if (annotateStuff->isChecked()) {
         maskDirty = true;
 
         ++saveMaskPendingCounter;
@@ -1230,7 +1235,22 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 
 void MainWindow::onUndo()
 {
-    if (!maskUndoBuffer.empty()) {
+    if (annotateThings->isChecked() && !annotationUndoBuffer.empty()) {
+        annotationRedoBuffer.push_back(currentThingAnnotations.results);
+        limitUndoOrRedoBufferSize(annotationRedoBuffer);
+
+        currentThingAnnotations.results = annotationUndoBuffer.back();
+
+        annotationUndoBuffer.pop_back();
+
+        image->setThingAnnotations(currentThingAnnotations.results);
+
+        updateUndoRedoMenuItemStatus();
+
+        saveCurrentThingAnnotations();
+    }
+
+    if (annotateStuff->isChecked() && !maskUndoBuffer.empty()) {
         const bool requireWaitCursor = currentMask.size().width() * currentMask.size().height() > 1024 * 1024;
         if (requireWaitCursor) {
             QApplication::setOverrideCursor(Qt::WaitCursor);
@@ -1257,7 +1277,22 @@ void MainWindow::onUndo()
 
 void MainWindow::onRedo()
 {
-    if (!maskRedoBuffer.empty()) {
+    if (annotateThings->isChecked() && !annotationRedoBuffer.empty()) {
+        annotationUndoBuffer.push_back(currentThingAnnotations.results);
+        limitUndoOrRedoBufferSize(annotationUndoBuffer);
+
+        currentThingAnnotations.results = annotationRedoBuffer.back();
+
+        annotationRedoBuffer.pop_back();
+
+        image->setThingAnnotations(currentThingAnnotations.results);
+
+        updateUndoRedoMenuItemStatus();
+
+        saveCurrentThingAnnotations();
+    }
+
+    if (annotateStuff->isChecked() && !maskRedoBuffer.empty()) {
         const bool requireWaitCursor = currentMask.size().width() * currentMask.size().height() > 1024 * 1024;
         if (requireWaitCursor) {
             QApplication::setOverrideCursor(Qt::WaitCursor);
@@ -1284,15 +1319,27 @@ void MainWindow::onRedo()
 
 void MainWindow::resetUndoBuffers()
 {
-    maskUndoBuffer.clear();
-    maskRedoBuffer.clear();
+    if (annotateThings->isChecked()) {
+        annotationUndoBuffer.clear();
+        annotationRedoBuffer.clear();
+    }
+    if (annotateStuff->isChecked()) {
+        maskUndoBuffer.clear();
+        maskRedoBuffer.clear();
+    }
     updateUndoRedoMenuItemStatus();
 }
 
 void MainWindow::updateUndoRedoMenuItemStatus()
 {
-    ui->actionUndo->setEnabled(!maskUndoBuffer.empty());
-    ui->actionRedo->setEnabled(!maskRedoBuffer.empty());
+    if (annotateThings->isChecked()) {
+        ui->actionUndo->setEnabled(!annotationUndoBuffer.empty());
+        ui->actionRedo->setEnabled(!annotationRedoBuffer.empty());
+    }
+    if (annotateStuff->isChecked()) {
+        ui->actionUndo->setEnabled(!maskUndoBuffer.empty());
+        ui->actionRedo->setEnabled(!maskRedoBuffer.empty());
+    }
 }
 
 void MainWindow::limitUndoOrRedoBufferSize(std::deque<QPixmap>& buffer)
