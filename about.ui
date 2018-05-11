@@ -118,7 +118,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>Copyright (c) 2017 Juha Reunanen / Tomaattinen Ltd</string>
+    <string>Copyright (c) 2017-2018 Juha Reunanen / Tomaattinen Ltd</string>
    </property>
   </widget>
   <widget class="QLabel" name="version">
