@@ -1,5 +1,5 @@
 init:
-  - set QTDIR=C:\Qt\5.8\msvc2013_64
+  - set QTDIR=C:\Qt\5.10.1\msvc2013_64
   - set PATH=%PATH%;%QTDIR%\bin;C:\Program Files (x86)\NSIS\bin
   - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" amd64
 install:
