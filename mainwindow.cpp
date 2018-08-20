@@ -36,6 +36,7 @@ namespace {
     const char* companyName = "Tomaattinen";
     const char* applicationName = "anno-single-rectangle-per-image";
     const int fullnameRole = Qt::UserRole + 0;
+    const int indexRole    = Qt::UserRole + 1;
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -338,6 +339,10 @@ void MainWindow::openFolder(const QString& dir)
 
     files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
 
+    for (int i = 0; i < files->count(); ++i) {
+        files->item(i)->setData(indexRole, i);
+    }
+
     currentWorkingFolder = dir;
 
     addRecentFolderMenuItem(dir);
@@ -415,6 +420,8 @@ void MainWindow::loadFile(QListWidgetItem* item)
 
     currentImageFileItem = item;
     currentImageFile = item->data(fullnameRole).toString();
+
+    files->setCurrentRow(item->data(indexRole).toInt());
 
     QSettings settings(companyName, applicationName);
     settings.setValue("defaultFile", item->text());
@@ -788,7 +795,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         const int currentRow = files->currentRow();
         const int newRow = currentRow - 1;
         if (newRow >= 0 && newRow < files->count()) {
-            files->setCurrentRow(newRow);
             loadFile(files->item(newRow));
         }
     }
@@ -796,7 +802,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         const int currentRow = files->currentRow();
         const int newRow = currentRow + 1;
         if (newRow >= 0 && newRow < files->count()) {
-            files->setCurrentRow(newRow);
             loadFile(files->item(newRow));
         }
     }
