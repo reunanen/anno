@@ -432,7 +432,7 @@ void MainWindow::loadFile(QListWidgetItem* item)
 
     QFuture<QImage> imageFuture = QtConcurrent::run(readImage, currentImageFile);
 
-    const auto readResults = [](const QString& filename) {
+    const auto readResults = [](const QString& filename, bool usePen2) {
         InferenceResults results;
 
         QFile file;
@@ -456,12 +456,27 @@ void MainWindow::loadFile(QListWidgetItem* item)
             QResultImageView::Result result;
             const QJsonObject color = colorAndPaths.value("color").toObject();
 
-            result.pen = QPen(QColor(
-                color.value("r").toInt(),
-                color.value("g").toInt(),
-                color.value("b").toInt()
-            ));
-            result.pen.setWidth(2);
+            if (usePen2) {
+                // annotations
+                result.pen1 = QPen(Qt::green);
+                result.pen1.setWidth(6);
+
+                result.pen2 = std::make_shared<QPen>(QColor(
+                    color.value("r").toInt(),
+                    color.value("g").toInt(),
+                    color.value("b").toInt()
+                ));
+                result.pen2->setWidth(2);
+            }
+            else {
+                // results
+                result.pen1 = QPen(QColor(
+                    color.value("r").toInt(),
+                    color.value("g").toInt(),
+                    color.value("b").toInt()
+                ));
+                result.pen1.setWidth(2);
+            }
 
             const QJsonArray paths = colorAndPaths.value("color_paths").toArray();
             results.results.reserve(paths.size());
@@ -482,8 +497,8 @@ void MainWindow::loadFile(QListWidgetItem* item)
         return results;
     };
 
-    auto annotationsFuture = QtConcurrent::run(readResults, getAnnotationPathFilename(currentImageFile));
-    auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(currentImageFile));
+    auto annotationsFuture = QtConcurrent::run(readResults, getAnnotationPathFilename(currentImageFile), true);
+    auto resultsFuture = QtConcurrent::run(readResults, getInferenceResultPathFilename(currentImageFile), false);
 
     {
         QResultImageView::DelayedRedrawToken delayedRedrawToken;
@@ -603,8 +618,10 @@ void MainWindow::onAnnotationUpdated()
     const QRectF annotation = image->getAnnotatedSourceRect();
 
     currentAnnotations.results.resize(1);
-    currentAnnotations.results[0].pen = QPen(Qt::darkGreen);
-    currentAnnotations.results[0].pen.setWidth(2);
+    currentAnnotations.results[0].pen1 = QPen(Qt::green);
+    currentAnnotations.results[0].pen1.setWidth(6);
+    currentAnnotations.results[0].pen2 = std::make_shared<QPen>(Qt::darkGreen);
+    currentAnnotations.results[0].pen2->setWidth(2);
     currentAnnotations.results[0].contour.resize(4);
     currentAnnotations.results[0].contour[0] = annotation.topLeft();
     currentAnnotations.results[0].contour[1] = annotation.topRight();
@@ -631,10 +648,11 @@ void MainWindow::saveCurrentAnnotation()
         {
             for (const auto& annotationItem : currentAnnotations.results) {
                 QJsonObject colorObject;
-                colorObject["r"] = annotationItem.pen.color().red();
-                colorObject["g"] = annotationItem.pen.color().green();
-                colorObject["b"] = annotationItem.pen.color().blue();
-                colorObject["a"] = annotationItem.pen.color().alpha();
+                const auto& pen = (annotationItem.pen2.get() != nullptr) ? *annotationItem.pen2 : annotationItem.pen1;
+                colorObject["r"] = pen.color().red();
+                colorObject["g"] = pen.color().green();
+                colorObject["b"] = pen.color().blue();
+                colorObject["a"] = pen.color().alpha();
                 QJsonArray colorPathsArray;
                 QJsonArray colorPathArray;
                 for (const QPointF& point : annotationItem.contour) {
