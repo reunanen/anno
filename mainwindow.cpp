@@ -571,11 +571,11 @@ void MainWindow::onResultsVisible(bool toggled)
 void MainWindow::updateResults(QResultImageView::DelayedRedrawToken* delayedRedrawToken)
 {
     currentlyShownPaths.clear();
-    if (annotationsVisible->isChecked()) {
-        std::copy(currentAnnotations.results.begin(), currentAnnotations.results.end(), std::back_inserter(currentlyShownPaths));
-    }
     if (resultsVisible->isChecked()) {
         std::copy(currentResults.results.begin(), currentResults.results.end(), std::back_inserter(currentlyShownPaths));
+    }
+    if (annotationsVisible->isChecked()) {
+        std::copy(currentAnnotations.results.begin(), currentAnnotations.results.end(), std::back_inserter(currentlyShownPaths));
     }
     image->setResults(currentlyShownPaths, delayedRedrawToken);
 
