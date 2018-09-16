@@ -342,8 +342,8 @@ void MainWindow::openFolder(const QString& dir)
     const auto t2 = std::chrono::steady_clock::now();
 
     for (auto& filenameWithColor : filenamesWithColor) {
-        QFileInfo annotationFileInfo(getAnnotationPathFilename(filenameWithColor.first));
-        if (annotationFileInfo.exists() && annotationFileInfo.isFile()) {
+        const bool fileExists = QFileInfo::exists(getAnnotationPathFilename(filenameWithColor.first));
+        if (fileExists) {
             // keep it black
         }
         else {
