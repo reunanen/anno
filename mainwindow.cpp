@@ -30,6 +30,8 @@
 #include <QBuffer>
 #include <QKeyEvent>
 #include <QtUiTools>
+
+//#include <chrono>
 #include <assert.h>
 
 namespace {
@@ -163,6 +165,7 @@ void MainWindow::createFileList()
     fileListDockWidget->setObjectName("Files");
 
     files = new QListWidget(this);
+    files->setUniformItemSizes(true);
 
     fileListDockWidget->setWidget(files);
     addDockWidget(Qt::LeftDockWidgetArea, fileListDockWidget);
@@ -307,6 +310,10 @@ void MainWindow::openFolder(const QString& dir)
         createFileList();
     }
 
+    //const auto t0 = std::chrono::steady_clock::now();
+
+    files->setUpdatesEnabled(false);
+
     files->clear();
     currentImageFileItem = nullptr;
 
@@ -342,6 +349,12 @@ void MainWindow::openFolder(const QString& dir)
     for (int i = 0; i < files->count(); ++i) {
         files->item(i)->setData(indexRole, i);
     }
+
+    files->setUpdatesEnabled(true);
+
+    //const auto t1 = std::chrono::steady_clock::now();
+
+    //statusBar()->showMessage("Opened folder " + dir + " in " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()) + " ms");
 
     currentWorkingFolder = dir;
 
