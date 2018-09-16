@@ -32,6 +32,7 @@
 #include <QtUiTools>
 
 #include <chrono>
+#include <set>
 #include <assert.h>
 
 namespace {
@@ -341,12 +342,14 @@ void MainWindow::openFolder(const QString& dir)
 
     const auto t2 = std::chrono::steady_clock::now();
 
+    std::set<QString> annotationFiles;
+    QDirIterator annotationFilesIterator(dir, QStringList() << "*_annotation_path.json", QDir::Files, QDirIterator::Subdirectories);
+    while (annotationFilesIterator.hasNext()) {
+        annotationFiles.insert(annotationFilesIterator.next());
+    }
+
     for (auto& filenameWithColor : filenamesWithColor) {
-        const bool fileExists = QFileInfo::exists(getAnnotationPathFilename(filenameWithColor.first));
-        if (fileExists) {
-            // keep it black
-        }
-        else {
+        if (annotationFiles.find(getAnnotationPathFilename(filenameWithColor.first)) == annotationFiles.end()) {
             filenameWithColor.second = Qt::gray;
         }
     }
