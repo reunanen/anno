@@ -206,6 +206,7 @@ void MainWindow::createFileList()
     fileListDockWidget->setObjectName("Files");
 
     files = new QListWidget(this);
+    files->setUniformItemSizes(true);
 
     fileListDockWidget->setWidget(files);
     addDockWidget(Qt::LeftDockWidgetArea, fileListDockWidget);
@@ -514,6 +515,8 @@ void MainWindow::openFolder(const QString& dir)
 
     addFileSystemWatcher();
 
+    files->setUpdatesEnabled(false);
+
     files->clear();
     currentImageFileItem = nullptr;
 
@@ -552,6 +555,8 @@ void MainWindow::openFolder(const QString& dir)
     }
 
     files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
+
+    files->setUpdatesEnabled(true);
 
     currentWorkingFolder = dir;
 
@@ -1406,7 +1411,7 @@ void MainWindow::onAddClass()
             if (color.isValid()) {
                 const auto minAlpha = 32;
                 if (color.alpha() < minAlpha) {
-                    QMessageBox::warning(this, tr("Invalid color"), tr("The alpha must be ≥ %1. (Now %2.)").arg(minAlpha, color.alpha()));
+                    QMessageBox::warning(this, tr("Invalid color"), tr("The alpha must be = %1. (Now %2.)").arg(minAlpha, color.alpha()));
                 }
                 else {
                     QColor roundedColor = color;
