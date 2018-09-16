@@ -327,12 +327,18 @@ void MainWindow::openFolder(const QString& dir)
     image->resetZoomAndPan();
 
     std::deque<std::pair<QString, QColor>> filenamesWithColor;
+    std::set<QString> annotationFiles;
 
     const auto t1 = std::chrono::steady_clock::now();
 
-    QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png" << "*_annotation_path.json", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         const QString filename = it.next();
+        const bool isAnnotationPathFilename = filename.length() > 21 && filename.right(21) == "_annotation_path.json";
+        if (isAnnotationPathFilename) {
+            annotationFiles.insert(filename);
+            continue;
+        }
         const bool isResultImage = filename.length() > 11 && filename.right(11) == "_result.png";
         const bool isMaskImage = filename.length() > 9 && filename.right(9) == "_mask.png";
         if (!isResultImage && !isMaskImage){
@@ -341,12 +347,6 @@ void MainWindow::openFolder(const QString& dir)
     }
 
     const auto t2 = std::chrono::steady_clock::now();
-
-    std::set<QString> annotationFiles;
-    QDirIterator annotationFilesIterator(dir, QStringList() << "*_annotation_path.json", QDir::Files, QDirIterator::Subdirectories);
-    while (annotationFilesIterator.hasNext()) {
-        annotationFiles.insert(annotationFilesIterator.next());
-    }
 
     for (auto& filenameWithColor : filenamesWithColor) {
         if (annotationFiles.find(getAnnotationPathFilename(filenameWithColor.first)) == annotationFiles.end()) {
