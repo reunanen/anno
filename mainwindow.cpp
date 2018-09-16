@@ -31,7 +31,7 @@
 #include <QKeyEvent>
 #include <QtUiTools>
 
-//#include <chrono>
+#include <chrono>
 #include <assert.h>
 
 namespace {
@@ -310,7 +310,7 @@ void MainWindow::openFolder(const QString& dir)
         createFileList();
     }
 
-    //const auto t0 = std::chrono::steady_clock::now();
+    const auto t0 = std::chrono::steady_clock::now();
 
     files->setUpdatesEnabled(false);
 
@@ -325,26 +325,47 @@ void MainWindow::openFolder(const QString& dir)
     image->setImage(QImage());
     image->resetZoomAndPan();
 
+    std::deque<std::pair<QString, QColor>> filenamesWithColor;
+
+    const auto t1 = std::chrono::steady_clock::now();
+
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         const QString filename = it.next();
         const bool isResultImage = filename.length() > 11 && filename.right(11) == "_result.png";
         const bool isMaskImage = filename.length() > 9 && filename.right(9) == "_mask.png";
         if (!isResultImage && !isMaskImage){
-            const QString displayName = filename.mid(dir.length() + 1);
-            QListWidgetItem* item = new QListWidgetItem(displayName, files);
-            QFileInfo annotationFileInfo(getAnnotationPathFilename(filename));
-            if (annotationFileInfo.exists() && annotationFileInfo.isFile()) {
-                item->setTextColor(Qt::black);
-            }
-            else {
-                item->setTextColor(Qt::gray);
-            }
-            item->setData(fullnameRole, filename);
+            filenamesWithColor.push_back(std::make_pair(filename, Qt::black));
         }
     }
 
+    const auto t2 = std::chrono::steady_clock::now();
+
+    for (auto& filenameWithColor : filenamesWithColor) {
+        QFileInfo annotationFileInfo(getAnnotationPathFilename(filenameWithColor.first));
+        if (annotationFileInfo.exists() && annotationFileInfo.isFile()) {
+            // keep it black
+        }
+        else {
+            filenameWithColor.second = Qt::gray;
+        }
+    }
+
+    const auto t3 = std::chrono::steady_clock::now();
+
+    for (const auto& filenameWithColor : filenamesWithColor) {
+        const QString filename = filenameWithColor.first;
+        const QString displayName = filename.mid(dir.length() + 1);
+        QListWidgetItem* item = new QListWidgetItem(displayName, files);
+        item->setTextColor(filenameWithColor.second);
+        item->setData(fullnameRole, filename);
+    }
+
+    const auto t4 = std::chrono::steady_clock::now();
+
     files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
+
+    const auto t5 = std::chrono::steady_clock::now();
 
     for (int i = 0; i < files->count(); ++i) {
         files->item(i)->setData(indexRole, i);
@@ -352,15 +373,21 @@ void MainWindow::openFolder(const QString& dir)
 
     files->setUpdatesEnabled(true);
 
-    //const auto t1 = std::chrono::steady_clock::now();
-
-    //statusBar()->showMessage("Opened folder " + dir + " in " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()) + " ms");
+    const auto t6 = std::chrono::steady_clock::now();
 
     currentWorkingFolder = dir;
 
     addRecentFolderMenuItem(dir);
 
     QApplication::restoreOverrideCursor();
+
+    statusBar()->showMessage("Opened folder " + dir + " (" + QString::number(filenamesWithColor.size()) + " files) in " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t6 - t0).count()) + " ms"
+                             + " (= " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()) + " ms + "
+                             + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()) + " ms + "
+                             + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count()) + " ms + "
+                             + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count()) + " ms + "
+                             + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t5 - t4).count()) + " ms + "
+                             + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(t6 - t5).count()) + " ms)");
 }
 
 void MainWindow::addRecentFolderMenuItem(const QString& dir)
