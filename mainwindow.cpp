@@ -251,6 +251,8 @@ void MainWindow::createToolList()
         resultsVisible->setChecked(true);
 
         connect(resultsVisible, SIGNAL(toggled(bool)), this, SLOT(onResultsVisible(bool)));
+
+        resultsUpdated = new QLabel(this);
     }
 
     {
@@ -269,6 +271,7 @@ void MainWindow::createToolList()
     layout->addWidget(eraseAnnotationsButton);
     layout->addSpacing(10);
     layout->addWidget(resultsVisible);
+    layout->addWidget(resultsUpdated);
     layout->addSpacing(10);
     layout->addStretch(1);
     layout->addWidget(yardstickVisible);
@@ -484,6 +487,8 @@ void MainWindow::loadFile(QListWidgetItem* item)
             return results;
         }
 
+        results.timestamp = QFileInfo(file).lastModified();
+
         if (file.size() > 100e6) {
             results.error = tr("The inference results JSON file is insanely large, so we're really not even trying to parse it.\n\nFor your reference, the file is:\n%1").arg(filename);
             return results;
@@ -556,6 +561,10 @@ void MainWindow::loadFile(QListWidgetItem* item)
         }
         if (!currentResults.error.isEmpty()) {
             QMessageBox::warning(nullptr, tr("Error"), currentResults.error);
+            resultsUpdated->setText("");
+        }
+        else {
+            resultsUpdated->setText(currentResults.timestamp.toString(Qt::ISODate));
         }
 
         updateResults(&delayedRedrawToken);

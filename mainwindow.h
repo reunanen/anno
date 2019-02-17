@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QDateTime>
 
 namespace Ui {
 class MainWindow;
@@ -13,6 +14,7 @@ class QSpinBox;
 class QCheckBox;
 class QRadioButton;
 class QPushButton;
+class QLabel;
 
 #include "QResultImageView/QResultImageView.h"
 #include <deque>
@@ -94,6 +96,8 @@ private:
     QCheckBox* resultsVisible = nullptr;
     QCheckBox* yardstickVisible = nullptr;
 
+    QLabel* resultsUpdated = nullptr;
+
     QString currentWorkingFolder;
     QListWidgetItem* currentImageFileItem = nullptr;
     QString currentImageFile;
@@ -102,6 +106,7 @@ private:
     {
         std::vector<QResultImageView::Result> results;
         QString error;
+        QDateTime timestamp;
     };
 
     InferenceResults currentResults;
