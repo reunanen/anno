@@ -958,7 +958,44 @@ void MainWindow::onAddClass()
                     QMessageBox::warning(this, tr("Invalid color"), tr("The alpha must be ≥ %1. (Now %2.)").arg(minAlpha, color.alpha()));
                 }
                 else {
-                    addNewClass(newClass, color);
+                    QColor roundedColor = color;
+                    const int alpha = color.alpha();
+
+                    const auto roundComponent = [&](int component) {
+                        // an experimental formula
+                        return static_cast<int>(std::round(std::round(component * alpha / 255.0) * 255.0 / alpha));
+                    };
+
+                    roundedColor.setRed  (roundComponent(color.red()));
+                    roundedColor.setGreen(roundComponent(color.green()));
+                    roundedColor.setBlue (roundComponent(color.blue()));
+
+                    if (roundedColor != color) {
+                        const auto componentChangeAsString = [](int oldValue, int newValue) {
+                            if (oldValue == newValue) {
+                                return tr("No changes (still %1)").arg(QString::number(oldValue));
+                            }
+                            else {
+                                return tr("%1 -> %2").arg(QString::number(oldValue), QString::number(newValue));
+                            }
+                        };
+
+                        const auto title = tr("Need to round the new color");
+                        const auto text = tr("We need to round the new color just a little:\n\n"
+                                             "Red:\t%1\nGreen:\t%2\nBlue:\t%3\n\n"
+                                             "Proceed?")
+                                          .arg(componentChangeAsString(color.red(),   roundedColor.red()),
+                                               componentChangeAsString(color.green(), roundedColor.green()),
+                                               componentChangeAsString(color.blue(),  roundedColor.blue()));
+
+                        const auto confirmation = QMessageBox::warning(this, title, text, QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+
+                        if (confirmation != QMessageBox::Yes) {
+                            return;
+                        }
+                    }
+
+                    addNewClass(newClass, roundedColor);
                     saveClassList();
                 }
             }
