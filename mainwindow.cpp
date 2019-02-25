@@ -1023,6 +1023,14 @@ void MainWindow::onRemoveClass()
                 delete item;
                 annotationClassItems.erase(i);
                 saveClassList();
+
+                if (row < annotationClassItems.size()) {
+                    onAnnotationClassClicked(annotationClassItems[row].listWidgetItem);
+                }
+                else if (row - 1 < annotationClassItems.size()) {
+                    onAnnotationClassClicked(annotationClassItems[row - 1].listWidgetItem);
+                }
+                panButton->setChecked(true);
             }
             return;
         }
@@ -1049,11 +1057,9 @@ void MainWindow::addNewClass(const QString& className, QColor color)
         classItem.listWidgetItem->setTextColor(Qt::white);
     }
 
-    if (annotationClassItems.empty()) {
-        classItem.listWidgetItem->setSelected(true);
-    }
-
     annotationClassItems.push_back(classItem);
+
+    onAnnotationClassClicked(classItem.listWidgetItem);
 }
 
 QString getClassListFilename(const QString& currentWorkingFolder)
