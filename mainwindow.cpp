@@ -950,7 +950,8 @@ void MainWindow::onAddClass()
             QMessageBox::critical(this, tr("Error"), tr("The class name cannot be empty."));
         }
         else {
-            const QColor color = QColorDialog::getColor(Qt::white, this, tr("Pick the color of the new class \"%1\"").arg(newClass), QColorDialog::ShowAlphaChannel);
+            const QColor defaultColor(255, 255, 255, 128);
+            const QColor color = QColorDialog::getColor(defaultColor, this, tr("Pick the color of the new class \"%1\"").arg(newClass), QColorDialog::ShowAlphaChannel);
             if (color.isValid()) {
                 addNewClass(newClass, color);
                 saveClassList();
