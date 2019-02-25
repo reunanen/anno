@@ -953,8 +953,14 @@ void MainWindow::onAddClass()
             const QColor defaultColor(255, 255, 255, 128);
             const QColor color = QColorDialog::getColor(defaultColor, this, tr("Pick the color of the new class \"%1\"").arg(newClass), QColorDialog::ShowAlphaChannel);
             if (color.isValid()) {
-                addNewClass(newClass, color);
-                saveClassList();
+                const auto minAlpha = 32;
+                if (color.alpha() < minAlpha) {
+                    QMessageBox::warning(this, tr("Invalid color"), tr("The alpha must be ≥ %1. (Now %2.)").arg(minAlpha, color.alpha()));
+                }
+                else {
+                    addNewClass(newClass, color);
+                    saveClassList();
+                }
             }
         }
     }
