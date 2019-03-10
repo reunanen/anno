@@ -36,6 +36,8 @@ namespace {
     const char* companyName = "Tomaattinen";
     const char* applicationName = "anno";
     const int fullnameRole = Qt::UserRole + 0;
+    const QColor cleanColor = QColor(0, 255, 0, 64);
+    const QColor ignoreColor = QColor(127, 127, 127, 128);
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -446,9 +448,16 @@ void MainWindow::openFolder(const QString& dir)
 
     if (annotationClassItems.empty()) {
         // Add sample classes
-        addNewClass("Clean",        QColor(0,   255, 0,  64));
-        addNewClass("Minor defect", QColor(255, 255, 0, 128));
-        addNewClass("Major defect", QColor(255, 0,   0, 128));
+        addNewClass(cleanClassLabel, cleanColor);
+        addNewClass(tr("Minor defect"), QColor(255, 255, 0, 128));
+        addNewClass(tr("Major defect"), QColor(255, 0,   0, 128));
+    }
+
+    if (annotateThings->isChecked()) {
+        conditionallyChangeFirstClass(cleanClassLabel, cleanColor, ignoreClassLabel, ignoreColor);
+    }
+    else {
+        conditionallyChangeFirstClass(ignoreClassLabel, ignoreColor, cleanClassLabel, cleanColor);
     }
 
     QApplication::restoreOverrideCursor();
@@ -625,6 +634,33 @@ void MainWindow::loadFile(QListWidgetItem* item)
     QApplication::restoreOverrideCursor();
 }
 
+bool MainWindow::conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor)
+{
+    if (!annotationClassItems.empty() && annotationClasses->count() > 0) {
+        ClassItem& firstClass = annotationClassItems.front();
+        if (firstClass.className == oldName && firstClass.color == oldColor) {
+            firstClass.className = newName;
+            firstClass.color = newColor;
+
+            firstClass.listWidgetItem->setText(newName);
+            setClassItemColor(firstClass.listWidgetItem, newColor);
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void MainWindow::setClassItemColor(QListWidgetItem* listWidgetItem, QColor color)
+{
+    listWidgetItem->setBackgroundColor(color);
+
+    const QColor hslColor = color.toHsl();
+
+    listWidgetItem->setTextColor(hslColor.lightness() < 128 ? Qt::white : Qt::black);
+}
+
 void MainWindow::onAnnotateStuff(bool toggled)
 {
     markingRadius->setEnabled(toggled);
@@ -635,6 +671,8 @@ void MainWindow::onAnnotateStuff(bool toggled)
 
     if (toggled) {
         image->setAnnotationMode(QResultImageView::AnnotationMode::Stuff);
+
+        conditionallyChangeFirstClass(ignoreClassLabel, ignoreColor, cleanClassLabel, cleanColor);
     }
 }
 
@@ -648,6 +686,8 @@ void MainWindow::onAnnotateThings(bool toggled)
         saveMaskIfDirty();
 
         image->setAnnotationMode(QResultImageView::AnnotationMode::Things);
+
+        conditionallyChangeFirstClass(cleanClassLabel, cleanColor, ignoreClassLabel, ignoreColor);
     }
 
     updateUndoRedoMenuItemStatus();
@@ -1014,6 +1054,11 @@ void MainWindow::onRenameClass()
         QMessageBox::warning(this, "Error", "No class selected");
     }
 
+    if (currentlySelectedAnnotationClassItem->text() == ignoreClassLabel) {
+        QMessageBox::warning(this, "Error", tr("The special \"Ignore\" class cannot be renamed"));
+        return;
+    }
+
     int row = 0, rowCount = annotationClasses->count();
     for (auto i = annotationClassItems.begin(), end = annotationClassItems.end(); i != end && row < rowCount; ++i, ++row) {
         ClassItem& classItem = *i;
@@ -1051,6 +1096,18 @@ void MainWindow::onRemoveClass()
         QMessageBox::warning(this, "Error", "No class selected");
     }
 
+    if (currentlySelectedAnnotationClassItem->text() == cleanClassLabel) {
+        if (QMessageBox::warning(this, tr("Please confirm"), tr("It is not recommended to remove the special \"Clean\" class.\n\nProceed anyway?"),
+                                 QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    if (currentlySelectedAnnotationClassItem->text() == ignoreClassLabel) {
+        QMessageBox::warning(this, "Error", tr("The special \"Ignore\" class cannot be removed"));
+        return;
+    }
+
     int row = 0, rowCount = annotationClasses->count();
     for (auto i = annotationClassItems.begin(), end = annotationClassItems.end(); i != end && row < rowCount; ++i, ++row) {
         const ClassItem& classItem = *i;
@@ -1085,14 +1142,9 @@ void MainWindow::addNewClass(const QString& className, QColor color)
     ClassItem classItem;
     classItem.className = className;
     classItem.color = color;
+
     classItem.listWidgetItem = new QListWidgetItem(className, annotationClasses);
-    classItem.listWidgetItem->setBackgroundColor(color);
-
-    const QColor hslColor = color.toHsl();
-
-    if (hslColor.lightness() < 128) {
-        classItem.listWidgetItem->setTextColor(Qt::white);
-    }
+    setClassItemColor(classItem.listWidgetItem, color);
 
     annotationClassItems.push_back(classItem);
 
@@ -1127,7 +1179,7 @@ void MainWindow::loadClassList()
                 colorObject["blue"].toInt(),
                 colorObject["alpha"].toInt()
             );
-            addNewClass(name, color);
+            addNewClass(name == "<<ignore>>" ? ignoreClassLabel : name, color);
         }
     }
 }
@@ -1140,7 +1192,12 @@ void MainWindow::saveClassList() const
         QJsonArray classArray;
         for (const ClassItem& classItem : annotationClassItems) {
             QJsonObject classObject;
-            classObject["name"] = classItem.className;
+            if (classItem.className == ignoreClassLabel) {
+                classObject["name"] = "<<ignore>>";
+            }
+            else {
+                classObject["name"] = classItem.className;
+            }
             QJsonObject colorObject;
             colorObject["red"] = classItem.color.red();
             colorObject["green"] = classItem.color.green();

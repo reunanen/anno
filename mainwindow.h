@@ -97,6 +97,9 @@ private:
 
     void updateBucketFillCheckboxState();
 
+    bool conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor);
+    static void setClassItemColor(QListWidgetItem* listWidgetItem, QColor color);
+
     Ui::MainWindow* ui;
     QListWidget* files = nullptr;
     QResultImageView* image = nullptr;
@@ -167,6 +170,9 @@ private:
 
     QByteArray defaultGeometry;
     QByteArray defaultState;
+
+    const QString cleanClassLabel = tr("Clean");
+    const QString ignoreClassLabel = tr("Ignore");
 };
 
 #endif // MAINWINDOW_H
