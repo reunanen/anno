@@ -17,7 +17,6 @@ win32 {
 
 SOURCES += main.cpp \
     mainwindow.cpp \
-    mainwindow.cpp \
     QResultImageView/QResultImageView.cpp \
     QResultImageView/qt-image-flood-fill/qfloodfill.cpp \
     cpp-move-file-to-trash/move-file-to-trash.cpp
