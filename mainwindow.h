@@ -36,6 +36,7 @@ private slots:
     void onOpenRecentFolder();
     void onFileClicked(QListWidgetItem* item);
     void onFileActivated(const QModelIndex& index);
+    void onFileItemChanged(QListWidgetItem* current, QListWidgetItem* previous);
     void onAnnotateStuff(bool toggled);
     void onAnnotateThings(bool toggled);
     void onPanButtonToggled(bool toggled);

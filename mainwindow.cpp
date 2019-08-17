@@ -194,6 +194,7 @@ void MainWindow::createFileList()
 
     connect(files, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onFileClicked(QListWidgetItem*)));
     connect(files, SIGNAL(activated(const QModelIndex&)), this, SLOT(onFileActivated(const QModelIndex&)));
+    connect(files, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(onFileItemChanged(QListWidgetItem*,QListWidgetItem*)));
 }
 
 void MainWindow::createToolList()
@@ -526,8 +527,21 @@ void MainWindow::onFileActivated(const QModelIndex& index)
     loadFile(files->item(index.row()));
 }
 
+void MainWindow::onFileItemChanged(QListWidgetItem* current, QListWidgetItem* previous)
+{
+    Q_UNUSED(previous);
+
+    if (current) {
+        loadFile(current);
+    }
+}
+
 void MainWindow::loadFile(QListWidgetItem* item)
 {
+    if (item == currentImageFileItem) {
+        return;
+    }
+
     saveMaskIfDirty();
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
