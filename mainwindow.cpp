@@ -246,7 +246,7 @@ void MainWindow::createToolList()
     {
         markingRadius = new QSpinBox(this);
         markingRadius->setMinimum(1);
-        markingRadius->setMaximum(100);
+        markingRadius->setMaximum(500);
         markingRadius->setValue(radius);
         markingRadius->setToolTip(tr("Tip: You can change the radius quickly by Ctrl + mouse wheel, when in annotation mode."));
 
@@ -819,8 +819,6 @@ void MainWindow::setClassItemColor(QListWidgetItem* listWidgetItem, QColor color
 
 void MainWindow::onAnnotateStuff(bool toggled)
 {
-    markingRadius->setEnabled(toggled);
-
     bucketFillCheckbox->setChecked(false); // Disable bucket fill, just to prevent accidents
 
     updateBucketFillCheckboxState();
@@ -834,8 +832,6 @@ void MainWindow::onAnnotateStuff(bool toggled)
 
 void MainWindow::onAnnotateThings(bool toggled)
 {
-    markingRadius->setEnabled(!toggled);
-
     updateBucketFillCheckboxState();
 
     if (toggled) {
