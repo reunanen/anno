@@ -88,6 +88,19 @@ void MainWindow::closeEvent(QCloseEvent *event)
         settings.setValue("markingRadius", markingRadius->value());
     }
 
+    if (allImageChannelsButton && allImageChannelsButton->isChecked()) {
+        settings.setValue("channelSelection", "all");
+    }
+    else if (redChannelButton && redChannelButton->isChecked()) {
+        settings.setValue("channelSelection", "red");
+    }
+    else if (greenChannelButton && greenChannelButton->isChecked()) {
+        settings.setValue("channelSelection", "green");
+    }
+    else if (blueChannelButton && blueChannelButton->isChecked()) {
+        settings.setValue("channelSelection", "blue");
+    }
+
     QMainWindow::closeEvent(event);
 }
 
@@ -138,8 +151,8 @@ void MainWindow::init()
     defaultGeometry = saveGeometry();
     defaultState = saveState();
 
-    const bool geometryRestored = restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
-    const bool stateRestored = restoreState(settings.value("mainWindowState").toByteArray());
+    /*const bool geometryRestored =*/ restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
+    /*const bool stateRestored =*/ restoreState(settings.value("mainWindowState").toByteArray());
 
     setFocusPolicy(Qt::StrongFocus);
 }
@@ -343,6 +356,65 @@ void MainWindow::createToolList()
         connect(resultsVisible, SIGNAL(toggled(bool)), this, SLOT(onResultsVisible(bool)));
     }
 
+    QGroupBox* imageChannels = nullptr;
+    if (settings.value("channelSelectionEnabled", QVariant(true)).toBool()) {
+        imageChannels = new QGroupBox(tr("Image channels"));
+        QVBoxLayout* imageChannelsLayout = new QVBoxLayout;
+
+        allImageChannelsButton = new QRadioButton(tr("All channels"));
+        redChannelButton = new QRadioButton(tr("Red channel"));
+        greenChannelButton = new QRadioButton(tr("Green channel"));
+        blueChannelButton = new QRadioButton(tr("Blue channel"));
+
+        imageChannelsLayout->addWidget(allImageChannelsButton);
+        imageChannelsLayout->addWidget(redChannelButton);
+        imageChannelsLayout->addWidget(greenChannelButton);
+        imageChannelsLayout->addWidget(blueChannelButton);
+
+        connect(allImageChannelsButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
+        connect(redChannelButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
+        connect(greenChannelButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
+        connect(blueChannelButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
+
+        imageChannels->setLayout(imageChannelsLayout);
+
+        QString channelSelection = settings.value("channelSelection").toString();
+        if (channelSelection == "red") {
+            redChannelButton->setChecked(true);
+        }
+        else if (channelSelection == "green") {
+            greenChannelButton->setChecked(true);
+        }
+        else if (channelSelection == "blue") {
+            blueChannelButton->setChecked(true);
+        }
+        else {
+            allImageChannelsButton->setChecked(true);
+        }
+
+        const bool allChannelsVisible = settings.value("allChannelsVisible", QVariant(true)).toBool();
+        if (!allChannelsVisible) {
+            allImageChannelsButton->setVisible(false);
+        }
+
+        const auto initChannelButton = [&settings](const QString& color, QRadioButton* button) {
+            const bool channelVisible = settings.value(color + "ChannelVisible", QVariant(true)).toBool();
+            if (!channelVisible) {
+                button->setVisible(false);
+            }
+            else {
+                QString channelLabel = settings.value(color + "ChannelLabel").toString();
+                if (!channelLabel.isEmpty()) {
+                    button->setText(channelLabel);
+                }
+            }
+        };
+
+        initChannelButton("red", redChannelButton);
+        initChannelButton("green", greenChannelButton);
+        initChannelButton("blue", blueChannelButton);
+    }
+
     {
         yardstickVisible = new QCheckBox("&Yardstick visible", this);
         yardstickVisible->setChecked(true);
@@ -360,6 +432,10 @@ void MainWindow::createToolList()
     layout->addWidget(rightMouseButtonActions);
     layout->addSpacing(10);
     layout->addWidget(resultsVisible);
+    if (imageChannels != nullptr) {
+        layout->addSpacing(10);
+        layout->addWidget(imageChannels);
+    }
     layout->addSpacing(10);
     layout->addWidget(yardstickVisible);
 }
@@ -618,7 +694,8 @@ void MainWindow::loadFile(QListWidgetItem* item)
 
         QResultImageView::DelayedRedrawToken delayedRedrawToken;
 
-        image->setImage(imageFuture.result(), &delayedRedrawToken);
+        originalImage = imageFuture.result();
+        initCurrentImage(&delayedRedrawToken);
         image->setMask(mask, &delayedRedrawToken);
 
         currentThingAnnotations = thingAnnotationsFuture.result();
@@ -646,6 +723,54 @@ void MainWindow::loadFile(QListWidgetItem* item)
     }
 
     QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::initCurrentImage(QResultImageView::DelayedRedrawToken* delayedRedrawToken)
+{
+    const bool channelSelectionsAvailable = allImageChannelsButton != nullptr
+        && (originalImage.format() == QImage::Format_RGB32 || originalImage.format() == QImage::Format_ARGB32);
+
+    if (allImageChannelsButton) {
+        allImageChannelsButton->setEnabled(channelSelectionsAvailable);
+        redChannelButton->setEnabled(channelSelectionsAvailable);
+        greenChannelButton->setEnabled(channelSelectionsAvailable);
+        blueChannelButton->setEnabled(channelSelectionsAvailable);
+    }
+
+    if (!channelSelectionsAvailable || allImageChannelsButton->isChecked()) {
+        image->setImage(originalImage, delayedRedrawToken);
+    }
+    else {
+        const bool isRed = redChannelButton->isChecked();
+        const bool isGreen = greenChannelButton->isChecked();
+
+        currentlyShownImage = originalImage.copy();
+
+        const int rows = originalImage.height();
+        const int cols = originalImage.width();
+
+#pragma omp parallel for
+        for (int row = 0; row < rows; ++row) {
+            QRgb* rowPtr = reinterpret_cast<QRgb*>(currentlyShownImage.scanLine(row));
+            for (int col = 0; col < cols; ++col) {
+                QRgb& color = rowPtr[col];
+                int value = 0;
+                if (isRed) {
+                    value = qRed(color);
+                }
+                else if (isGreen) {
+                    value = qGreen(color);
+                }
+                else {
+                    assert(blueChannelButton->isChecked());
+                    value = qBlue(color);
+                }
+                color = qRgb(value, value, value);
+            }
+        }
+
+        image->setImage(currentlyShownImage, delayedRedrawToken);
+    }
 }
 
 bool MainWindow::conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor)
@@ -826,6 +951,13 @@ void MainWindow::onYardstickVisible(bool toggled)
     else {
         image->setPixelSize(std::numeric_limits<double>::quiet_NaN(), "", false);
     }
+}
+
+void MainWindow::onChannelSelectionToggled(bool /*toggled*/)
+{
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    initCurrentImage();
+    QApplication::restoreOverrideCursor();
 }
 
 void MainWindow::onAnnotationUpdated()

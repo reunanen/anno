@@ -51,6 +51,7 @@ private slots:
     void onRightMouseResetViewButtonToggled(bool toggled);
     void onResultsVisible(bool toggled);
     void onYardstickVisible(bool toggled);
+    void onChannelSelectionToggled(bool toggled);
     void onAnnotationUpdated();
     void saveCurrentThingAnnotations();
     void onPostponeMaskUpdate();
@@ -77,6 +78,7 @@ private:
     void saveMask();
 
     void loadFile(QListWidgetItem* item);
+    void initCurrentImage(QResultImageView::DelayedRedrawToken* delayedRedrawToken = nullptr);
 
     static QString getMaskFilenameSuffix();
     static QString getMaskFilename(const QString& baseImageFilename);
@@ -139,6 +141,11 @@ private:
     QCheckBox* resultsVisible = nullptr;
     QCheckBox* yardstickVisible = nullptr;
 
+    QRadioButton* allImageChannelsButton = nullptr;
+    QRadioButton* redChannelButton = nullptr;
+    QRadioButton* greenChannelButton = nullptr;
+    QRadioButton* blueChannelButton = nullptr;
+
     QString currentWorkingFolder;
     QListWidgetItem* currentImageFileItem = nullptr;
     QString currentImageFile;
@@ -174,6 +181,9 @@ private:
 
     const QString cleanClassLabel = tr("Clean");
     const QString ignoreClassLabel = tr("Ignore");
+
+    QImage originalImage;
+    QImage currentlyShownImage;
 };
 
 #endif // MAINWINDOW_H
