@@ -459,12 +459,20 @@ void MainWindow::onOpenFolder()
         defaultDirectory = "C:\\";
 #endif
     }
-    const QString dir = QFileDialog::getExistingDirectory(this, tr("Select a folder containing some images"), defaultDirectory,
-                                                          QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
-    if (!dir.isEmpty()) {
-        settings.setValue("defaultDirectory", dir);
-        openFolder(dir);
+    QFileDialog dialog(this, "Select a folder containing some images (possibly in subfolders)");
+    dialog.setDirectory(defaultDirectory);
+    dialog.setFileMode(QFileDialog::Directory);
+    dialog.setOption(QFileDialog::DontUseNativeDialog);
+    dialog.setOption(QFileDialog::DontResolveSymlinks);
+    dialog.setNameFilter("(*.jpg *.jpeg *.png)");
+
+    if (dialog.exec() == QDialog::Accepted) {
+        const QString dir = dialog.directory().path();
+        if (!dir.isEmpty()) {
+            settings.setValue("defaultDirectory", dir);
+            openFolder(dir);
+        }
     }
 }
 
