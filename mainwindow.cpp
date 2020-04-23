@@ -1735,7 +1735,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                             }
                         };
 
-    #ifdef WIN32
+#ifdef WIN32
                         if (event->modifiers() & Qt::ShiftModifier) {
                             return confirmAndDeleteFile(filename);
                         }
@@ -1753,9 +1753,9 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                                 return false;
                             }
                         }
-    #else // WIN32
+#else // WIN32
                         return confirmAndDeleteFile(filename);
-    #endif // WIN32
+#endif // WIN32
                     };
 
                     const auto removeImageFromList = [row, this]() {
