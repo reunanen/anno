@@ -7,3 +7,6 @@
 [submodule "qt-image-flood-fill"]
 	path = qt-image-flood-fill
 	url = https://github.com/reunanen/qt-image-flood-fill
+[submodule "Numcore_messaging_library"]
+	path = Numcore_messaging_library
+	url = https://github.com/reunanen/Numcore_messaging_library

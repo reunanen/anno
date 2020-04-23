@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <messaging/claim/PostOffice.h>
 
 namespace Ui {
 class MainWindow;
@@ -185,6 +186,8 @@ private:
 
     QImage originalImage;
     QImage currentlyShownImage;
+
+    claim::PostOffice postOffice;
 };
 
 #endif // MAINWINDOW_H

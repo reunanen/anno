@@ -157,6 +157,9 @@ void MainWindow::init()
     /*const bool geometryRestored =*/ restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     /*const bool stateRestored =*/ restoreState(settings.value("mainWindowState").toByteArray());
 
+    numcfc::IniFile iniFile("anno.ini");
+    postOffice.Initialize(iniFile, "anno");
+
     setFocusPolicy(Qt::StrongFocus);
 }
 
