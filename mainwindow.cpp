@@ -799,6 +799,56 @@ void MainWindow::onFileItemChanged(QListWidgetItem* current, QListWidgetItem* pr
     }
 }
 
+MainWindow::InferenceResults MainWindow::readResultsJSON(const QString& filename)
+{
+    InferenceResults results;
+
+    QFile file;
+    file.setFileName(filename);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return results;
+    }
+
+    if (file.size() > 100e6) {
+        results.error = tr("The inference results JSON file is insanely large, so we're really not even trying to parse it.\n\nFor your reference, the file is:\n%1").arg(filename);
+        return results;
+    }
+
+    QString json = file.readAll();
+    QJsonDocument document = QJsonDocument::fromJson(json.toUtf8());
+
+    const QJsonArray colors = document.array();
+
+    for (int i = 0, end = colors.size(); i < end; ++i) {
+        const QJsonObject colorAndPaths = colors[i].toObject();
+        QResultImageView::Result result;
+        const QJsonObject color = colorAndPaths.value("color").toObject();
+
+        result.pen = QPen(QColor(
+            color.value("r").toInt(),
+            color.value("g").toInt(),
+            color.value("b").toInt()
+        ));
+
+        const QJsonArray paths = colorAndPaths.value("color_paths").toArray();
+        results.results.reserve(paths.size());
+
+        for (int j = 0, end = paths.size(); j < end; ++j) {
+            const QJsonArray path = paths[j].toArray();
+            result.contour.reserve(path.size());
+            for (int k = 0, end = path.size(); k < end; ++k) {
+                const QJsonObject point = path[k].toObject();
+                result.contour.push_back(QPointF(point.value("x").toDouble(), point.value("y").toDouble()));
+
+            }
+            results.results.push_back(result);
+            result.contour.clear();
+        }
+    }
+
+    return results;
+}
+
 void MainWindow::loadFile(QListWidgetItem* item)
 {
     if (item == currentImageFileItem) {
@@ -823,53 +873,8 @@ void MainWindow::loadFile(QListWidgetItem* item)
     QFuture<QImage> imageFuture = QtConcurrent::run(readImage, currentImageFile);
     QFuture<QImage> maskFuture = QtConcurrent::run(readImage, getMaskFilename(currentImageFile));
 
-    const auto readResults = [](const QString& filename) {
-        InferenceResults results;
-
-        QFile file;
-        file.setFileName(filename);
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            return results;
-        }
-
-        if (file.size() > 100e6) {
-            results.error = tr("The inference results JSON file is insanely large, so we're really not even trying to parse it.\n\nFor your reference, the file is:\n%1").arg(filename);
-            return results;
-        }
-
-        QString json = file.readAll();
-        QJsonDocument document = QJsonDocument::fromJson(json.toUtf8());
-
-        const QJsonArray colors = document.array();
-
-        for (int i = 0, end = colors.size(); i < end; ++i) {
-            const QJsonObject colorAndPaths = colors[i].toObject();
-            QResultImageView::Result result;
-            const QJsonObject color = colorAndPaths.value("color").toObject();
-
-            result.pen = QPen(QColor(
-                color.value("r").toInt(),
-                color.value("g").toInt(),
-                color.value("b").toInt()
-            ));
-
-            const QJsonArray paths = colorAndPaths.value("color_paths").toArray();
-            results.results.reserve(paths.size());
-
-            for (int j = 0, end = paths.size(); j < end; ++j) {
-                const QJsonArray path = paths[j].toArray();
-                result.contour.reserve(path.size());
-                for (int k = 0, end = path.size(); k < end; ++k) {
-                    const QJsonObject point = path[k].toObject();
-                    result.contour.push_back(QPointF(point.value("x").toDouble(), point.value("y").toDouble()));
-
-                }
-                results.results.push_back(result);
-                result.contour.clear();
-            }
-        }
-
-        return results;
+    const auto readResults = [this](const QString& filename) {
+        return readResultsJSON(filename);
     };
 
     auto thingAnnotationsFuture = QtConcurrent::run(readResults, getThingAnnotationsPathFilename(currentImageFile));
@@ -1621,47 +1626,135 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
             const QString filename = files->item(row)->data(fullnameRole).toString();
             if (filename.length() > 0) {
 
-                const auto confirmAndDeleteFile = [&]() {
-                    const bool isOkToProceed
-                            = QMessageBox::Yes == QMessageBox::question(this, tr("Are you sure?"),
-                                tr("This will permanently delete the file:\n%1").arg(filename));
-                    if (isOkToProceed) {
-                        QFile::remove(filename);
-                        QListWidgetItem* item = files->takeItem(row);
-                        delete item;
-                        loadFile(files->item(files->currentRow()));
-                        return true;
-                    }
-                    else {
-                        return false;
-                    }
-                };
+                const auto maskFilename = getMaskFilename(filename);
+                const auto thingAnnotationsPathFilename = getThingAnnotationsPathFilename(filename);
 
-                // TODO: Delete also the JSON result files, etc.
+                bool hasActualStuffAnnotations = false;
+                bool hasActualThingsAnnotations = false;
+
+                if (files->item(row)->textColor() != Qt::gray) {
+                    QFuture<QImage> maskFuture;
+
+                    if (QFile().exists(maskFilename)) {
+                        const auto readImage = [](const QString& filename) { return QImage(filename); };
+                        maskFuture = QtConcurrent::run(readImage, getMaskFilename(filename));
+                    }
+
+                    if (QFile().exists(thingAnnotationsPathFilename)) {
+                        if (!readResultsJSON(thingAnnotationsPathFilename).results.empty()) {
+                            hasActualThingsAnnotations = true;
+                        }
+                    }
+
+                    if (QFile().exists(maskFilename)) {
+                        QImage mask = maskFuture.result();
+                        if (mask.height() > 0 && mask.width() > 0) {
+                            if (mask.format() == QImage::Format_ARGB32) {
+                                QApplication::setOverrideCursor(Qt::WaitCursor);
+                                std::vector<uchar> emptyRow(mask.width() * 4);
+                                for (int row = 0, rows = mask.height(); row < rows; ++row) {
+                                    const uchar* rowPtr = mask.scanLine(row);
+                                    if (memcmp(rowPtr, emptyRow.data(), emptyRow.size()) != 0) {
+                                        hasActualStuffAnnotations = true;
+                                        break;
+                                    }
+                                }
+                                QApplication::restoreOverrideCursor();
+                            }
+                            else {
+                                QMessageBox::warning(this,
+                                                     tr("Unexpected mask image format"),
+                                                     tr("Unexpected mask image format %1 in image %2").arg(QString::number(mask.format())), maskFilename);
+                            }
+                        }
+                    }
+                }
+
+                const bool hasActualAnnotations = hasActualStuffAnnotations || hasActualThingsAnnotations;
+
+                const auto removeFile = [event, this](const QString& filename) {
+
+                    const auto confirmAndDeleteFile = [this](const QString& filename) {
+                        const bool isOkToProceed
+                                = QMessageBox::Yes == QMessageBox::question(this, tr("Are you sure?"),
+                                    tr("This will permanently delete the file:\n%1").arg(filename));
+                        if (isOkToProceed) {
+                            QFile::remove(filename);
+                            return true;
+                        }
+                        else {
+                            return false;
+                        }
+                    };
 
 #ifdef WIN32
-                if (event->modifiers() & Qt::ShiftModifier) {
-                    confirmAndDeleteFile();
+                    if (event->modifiers() & Qt::ShiftModifier) {
+                        return confirmAndDeleteFile(filename);
+                    }
+                    else {
+                        std::vector<wchar_t> buffer(filename.length() + 1);
+                        filename.toWCharArray(buffer.data());
+                        buffer.back() = L'\0';
+                        try {
+                            return move_file_to_trash(buffer.data());
+                        }
+                        catch (std::exception& e) {
+                            QString error = QString::fromLatin1(e.what());
+                            error.replace(QString("Unable to move the file to the recycle bin; error code ="), tr("Unable to move file %1 to the recycle bin.\n\nError code =").arg(filename));
+                            QMessageBox::warning(this, tr("Error"), error);
+                            return false;
+                        }
+                    }
+#else // WIN32
+                    return confirmAndDeleteFile(filename);
+#endif // WIN32
+                };
+
+                if (hasActualAnnotations) {
+                    const auto deleteAnnotationFile = [removeFile, this](QString filename, bool hasActualAnnotations) {
+                        if (QFile().exists(filename)) {
+                            if (hasActualAnnotations) {
+                                return removeFile(filename);
+                            }
+                            else {
+                                if (!QFile().remove(filename)) {
+                                    QMessageBox::warning(this, tr("Error"), tr("Unable to remove file %1").arg(filename));
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    };
+
+                    const auto deleteAnnotations = [&]() {
+                        if (!deleteAnnotationFile(thingAnnotationsPathFilename, hasActualThingsAnnotations)) {
+                            return false;
+                        }
+                        image->setThingAnnotations(QResultImageView::Results());
+
+                        if (!deleteAnnotationFile(maskFilename, hasActualStuffAnnotations)) {
+                            return false;
+                        }
+                        image->setMask(QImage());
+
+                        return true;
+                    };
+
+                    if (deleteAnnotations()) {
+                        files->item(row)->setTextColor(Qt::gray);
+                    }
                 }
                 else {
-                    std::vector<wchar_t> buffer(filename.length() + 1);
-                    filename.toWCharArray(buffer.data());
-                    buffer.back() = L'\0';
-                    try {
-                        move_file_to_trash(buffer.data());
+                    const auto removeImageFromList = [row, this]() {
                         QListWidgetItem* item = files->takeItem(row);
                         delete item;
                         loadFile(files->item(files->currentRow()));
-                    }
-                    catch (std::exception& e) {
-                        QString error = QString::fromLatin1(e.what());
-                        error.replace(QString("Unable to move the file to the recycle bin; error code ="), tr("Unable to move file %1 to the recycle bin.\n\nError code =").arg(filename));
-                        QMessageBox::warning(this, tr("Error"), error);
+                    };
+
+                    if (removeFile(filename)) {
+                        removeImageFromList();
                     }
                 }
-#else // WIN32
-                confirmAndDeleteFile();
-#endif // WIN32
             }
         }
     }
