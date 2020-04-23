@@ -498,6 +498,8 @@ void MainWindow::openFolder(const QString& dir)
 {
     saveMaskIfDirty();
 
+    setWindowTitle(tr("anno @ %1").arg(dir));
+
     if (!files) {
         createFileList();
     }
