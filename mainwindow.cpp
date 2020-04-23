@@ -4,6 +4,8 @@
 
 #include "cpp-move-file-to-trash/move-file-to-trash.h"
 
+#include <messaging/claim/AttributeMessage.h>
+
 #include <QSettings>
 #include <QTimer>
 #include <QListWidget>
@@ -990,6 +992,23 @@ void MainWindow::onChannelSelectionToggled(bool /*toggled*/)
 
 void MainWindow::onAnnotationUpdated()
 {
+    if (currentImageFileItem != nullptr) {
+        // Make the image permanent
+        // NB: making an image permanent ought to be an idempotent operation
+        const QString filename = currentImageFileItem->text();
+
+        std::string imageId = filename.toLatin1();
+        const auto lastSlashPos = imageId.find_last_of("/\\");
+        if (lastSlashPos != std::string::npos) {
+            imageId = imageId.substr(lastSlashPos + 1);
+        }
+
+        claim::AttributeMessage amsg;
+        amsg.m_type = "MakePermanent";
+        amsg.m_attributes["id"] = imageId;
+        postOffice.Send(amsg);
+    }
+
     if (annotateThings->isChecked()) {
         annotationUndoBuffer.push_back(currentThingAnnotations.results);
         limitUndoOrRedoBufferSize(annotationUndoBuffer);
