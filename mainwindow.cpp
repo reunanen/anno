@@ -1629,122 +1629,135 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                 const auto maskFilename = getMaskFilename(filename);
                 const auto thingAnnotationsPathFilename = getThingAnnotationsPathFilename(filename);
 
-                bool hasActualStuffAnnotations = false;
-                bool hasActualThingsAnnotations = false;
-
-                if (files->item(row)->textColor() != Qt::gray) {
-                    QFuture<QImage> maskFuture;
-
-                    if (QFile().exists(maskFilename)) {
-                        const auto readImage = [](const QString& filename) { return QImage(filename); };
-                        maskFuture = QtConcurrent::run(readImage, getMaskFilename(filename));
+                const auto hasAnnotationFiles = [&]() {
+                    if (files->item(row)->textColor() == Qt::gray) {
+                        return false;
                     }
 
-                    if (QFile().exists(thingAnnotationsPathFilename)) {
-                        if (!readResultsJSON(thingAnnotationsPathFilename).results.empty()) {
-                            hasActualThingsAnnotations = true;
-                        }
-                    }
-
-                    if (QFile().exists(maskFilename)) {
-                        QImage mask = maskFuture.result();
-                        if (mask.height() > 0 && mask.width() > 0) {
-                            if (mask.format() == QImage::Format_ARGB32) {
-                                QApplication::setOverrideCursor(Qt::WaitCursor);
-                                std::vector<uchar> emptyRow(mask.width() * 4);
-                                for (int row = 0, rows = mask.height(); row < rows; ++row) {
-                                    const uchar* rowPtr = mask.scanLine(row);
-                                    if (memcmp(rowPtr, emptyRow.data(), emptyRow.size()) != 0) {
-                                        hasActualStuffAnnotations = true;
-                                        break;
-                                    }
-                                }
-                                QApplication::restoreOverrideCursor();
-                            }
-                            else {
-                                QMessageBox::warning(this,
-                                                     tr("Unexpected mask image format"),
-                                                     tr("Unexpected mask image format %1 in image %2").arg(QString::number(mask.format())), maskFilename);
-                            }
-                        }
-                    }
-                }
-
-                const bool hasActualAnnotations = hasActualStuffAnnotations || hasActualThingsAnnotations;
-
-                const auto removeFile = [event, this](const QString& filename) {
-
-                    const auto confirmAndDeleteFile = [this](const QString& filename) {
-                        const bool isOkToProceed
-                                = QMessageBox::Yes == QMessageBox::question(this, tr("Are you sure?"),
-                                    tr("This will permanently delete the file:\n%1").arg(filename));
-                        if (isOkToProceed) {
-                            QFile::remove(filename);
-                            return true;
-                        }
-                        else {
-                            return false;
-                        }
-                    };
-
-#ifdef WIN32
-                    if (event->modifiers() & Qt::ShiftModifier) {
-                        return confirmAndDeleteFile(filename);
-                    }
-                    else {
-                        std::vector<wchar_t> buffer(filename.length() + 1);
-                        filename.toWCharArray(buffer.data());
-                        buffer.back() = L'\0';
-                        try {
-                            return move_file_to_trash(buffer.data());
-                        }
-                        catch (std::exception& e) {
-                            QString error = QString::fromLatin1(e.what());
-                            error.replace(QString("Unable to move the file to the recycle bin; error code ="), tr("Unable to move file %1 to the recycle bin.\n\nError code =").arg(filename));
-                            QMessageBox::warning(this, tr("Error"), error);
-                            return false;
-                        }
-                    }
-#else // WIN32
-                    return confirmAndDeleteFile(filename);
-#endif // WIN32
+                    return QFile().exists(thingAnnotationsPathFilename)
+                        || QFile().exists(maskFilename);
                 };
 
-                if (hasActualAnnotations) {
-                    const auto deleteAnnotationFile = [removeFile, this](QString filename, bool hasActualAnnotations) {
-                        if (QFile().exists(filename)) {
-                            if (hasActualAnnotations) {
-                                return removeFile(filename);
+                if (hasAnnotationFiles()) {
+                    bool hasActualStuffAnnotations = false;
+                    bool hasActualThingsAnnotations = false;
+
+                    if (files->item(row)->textColor() != Qt::gray) {
+                        QFuture<QImage> maskFuture;
+
+                        if (QFile().exists(maskFilename)) {
+                            const auto readImage = [](const QString& filename) { return QImage(filename); };
+                            maskFuture = QtConcurrent::run(readImage, getMaskFilename(filename));
+                        }
+
+                        if (QFile().exists(thingAnnotationsPathFilename)) {
+                            if (!readResultsJSON(thingAnnotationsPathFilename).results.empty()) {
+                                hasActualThingsAnnotations = true;
                             }
-                            else {
+                        }
+
+                        if (QFile().exists(maskFilename)) {
+                            QImage mask = maskFuture.result();
+                            if (mask.height() > 0 && mask.width() > 0) {
+                                if (mask.format() == QImage::Format_ARGB32) {
+                                    QApplication::setOverrideCursor(Qt::WaitCursor);
+                                    std::vector<uchar> emptyRow(mask.width() * 4);
+                                    for (int row = 0, rows = mask.height(); row < rows; ++row) {
+                                        const uchar* rowPtr = mask.scanLine(row);
+                                        if (memcmp(rowPtr, emptyRow.data(), emptyRow.size()) != 0) {
+                                            hasActualStuffAnnotations = true;
+                                            break;
+                                        }
+                                    }
+                                    QApplication::restoreOverrideCursor();
+                                }
+                                else {
+                                    QMessageBox::warning(this,
+                                                         tr("Unexpected mask image format"),
+                                                         tr("Unexpected mask image format %1 in image %2").arg(QString::number(mask.format())), maskFilename);
+                                }
+                            }
+                        }
+                    }
+
+                    const bool hasActualAnnotations = hasActualStuffAnnotations || hasActualThingsAnnotations;
+
+                    const bool isOkToProceed = !hasActualAnnotations
+                            || QMessageBox::Yes == QMessageBox::question(this, tr("Are you sure?"),
+                                tr("You have actual annotations for image %1.\n\n"
+                                   "Do you really want to delete them?\n\n"
+                                   "This operation is irreversible.").arg(filename),
+                                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+                    if (isOkToProceed) {
+                        const auto deleteAnnotationFile = [this](QString filename) {
+                            if (QFile().exists(filename)) {
                                 if (!QFile().remove(filename)) {
                                     QMessageBox::warning(this, tr("Error"), tr("Unable to remove file %1").arg(filename));
                                     return false;
                                 }
                             }
+                            return true;
+                        };
+
+                        const auto deleteAnnotations = [&]() {
+                            if (!deleteAnnotationFile(thingAnnotationsPathFilename)) {
+                                return false;
+                            }
+                            image->setThingAnnotations(QResultImageView::Results());
+
+                            if (!deleteAnnotationFile(maskFilename)) {
+                                return false;
+                            }
+                            image->setMask(QImage());
+
+                            return true;
+                        };
+
+                        if (deleteAnnotations()) {
+                            files->item(row)->setTextColor(Qt::gray);
                         }
-                        return true;
-                    };
-
-                    const auto deleteAnnotations = [&]() {
-                        if (!deleteAnnotationFile(thingAnnotationsPathFilename, hasActualThingsAnnotations)) {
-                            return false;
-                        }
-                        image->setThingAnnotations(QResultImageView::Results());
-
-                        if (!deleteAnnotationFile(maskFilename, hasActualStuffAnnotations)) {
-                            return false;
-                        }
-                        image->setMask(QImage());
-
-                        return true;
-                    };
-
-                    if (deleteAnnotations()) {
-                        files->item(row)->setTextColor(Qt::gray);
                     }
                 }
                 else {
+                    const auto removeFile = [event, this](const QString& filename) {
+
+                        const auto confirmAndDeleteFile = [this](const QString& filename) {
+                            const bool isOkToProceed
+                                    = QMessageBox::Yes == QMessageBox::question(this, tr("Are you sure?"),
+                                        tr("This will permanently delete the file:\n%1").arg(filename));
+                            if (isOkToProceed) {
+                                QFile::remove(filename);
+                                return true;
+                            }
+                            else {
+                                return false;
+                            }
+                        };
+
+    #ifdef WIN32
+                        if (event->modifiers() & Qt::ShiftModifier) {
+                            return confirmAndDeleteFile(filename);
+                        }
+                        else {
+                            std::vector<wchar_t> buffer(filename.length() + 1);
+                            filename.toWCharArray(buffer.data());
+                            buffer.back() = L'\0';
+                            try {
+                                return move_file_to_trash(buffer.data());
+                            }
+                            catch (std::exception& e) {
+                                QString error = QString::fromLatin1(e.what());
+                                error.replace(QString("Unable to move the file to the recycle bin; error code ="), tr("Unable to move file %1 to the recycle bin.\n\nError code =").arg(filename));
+                                QMessageBox::warning(this, tr("Error"), error);
+                                return false;
+                            }
+                        }
+    #else // WIN32
+                        return confirmAndDeleteFile(filename);
+    #endif // WIN32
+                    };
+
                     const auto removeImageFromList = [row, this]() {
                         QListWidgetItem* item = files->takeItem(row);
                         delete item;
