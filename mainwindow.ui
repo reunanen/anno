@@ -114,7 +114,7 @@
     <string>Export ...</string>
    </property>
    <property name="toolTip">
-    <string>This will export all annotations, and the corresponding images, to a specified folder.</string>
+    <string>Export all annotations, and the corresponding images, to a specified folder.</string>
    </property>
   </action>
  </widget>

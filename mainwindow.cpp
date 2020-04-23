@@ -48,6 +48,8 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    ui->menuFile->setToolTipsVisible(true);
+
     recentFoldersMenu = new QMenu(tr("&Recent folders"), this);
     ui->menuFile->insertMenu(ui->actionExit, recentFoldersMenu);
 
