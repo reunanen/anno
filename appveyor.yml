@@ -6,8 +6,15 @@ install:
   - git submodule update --init --recursive
 build_script:
   - echo namespace { const char* version = "%APPVEYOR_BUILD_VERSION%"; } > version.h
-  - qmake anno.pro
+  - cd librabbitmq
+  - qmake
   - nmake
+  - cd ..
+  - cd app
+  - qmake
+  - nmake
+  - xcopy /y release\anno.exe ..\release\
+  - cd ..
   - makensis anno-installer.nsi
 artifacts:
   - path: anno-installer-v*.exe
