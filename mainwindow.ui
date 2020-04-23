@@ -28,6 +28,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="actionOpenFolder"/>
+    <addaction name="actionExport"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -106,6 +107,14 @@
   <action name="actionRestoreDefaultWindowPositions">
    <property name="text">
     <string>Restore default positions</string>
+   </property>
+  </action>
+  <action name="actionExport">
+   <property name="text">
+    <string>Export ...</string>
+   </property>
+   <property name="toolTip">
+    <string>This will export all annotations, and the corresponding images, to a specified folder.</string>
    </property>
   </action>
  </widget>

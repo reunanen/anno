@@ -34,6 +34,7 @@ private slots:
     void initImageIO();
     void onOpenFolder();
     void onOpenRecentFolder();
+    void onExport();
     void onFileClicked(QListWidgetItem* item);
     void onFileActivated(const QModelIndex& index);
     void onFileItemChanged(QListWidgetItem* current, QListWidgetItem* previous);
