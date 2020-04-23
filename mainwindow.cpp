@@ -1626,6 +1626,8 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
             const QString filename = files->item(row)->data(fullnameRole).toString();
             if (filename.length() > 0) {
 
+                saveMaskIfDirty();
+
                 const auto maskFilename = getMaskFilename(filename);
                 const auto thingAnnotationsPathFilename = getThingAnnotationsPathFilename(filename);
 
