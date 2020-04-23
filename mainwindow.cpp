@@ -23,6 +23,7 @@
 #include <QLabel>
 #include <QInputDialog>
 #include <QColorDialog>
+#include <QProgressDialog>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QMessageBox>
@@ -37,6 +38,7 @@
 namespace {
     const char* companyName = "Tomaattinen";
     const char* applicationName = "anno";
+    const char* classListFilename = "anno_classes.json";
     const int fullnameRole = Qt::UserRole + 0;
     const QColor cleanColor = QColor(0, 255, 0, 64);
     const QColor ignoreColor = QColor(127, 127, 127, 128);
@@ -57,6 +59,7 @@ MainWindow::MainWindow(QWidget *parent) :
     reverseFileOrder = settings.value("reverseFileOrder").toBool();
 
     connect(ui->actionOpenFolder, SIGNAL(triggered()), this, SLOT(onOpenFolder()));
+    connect(ui->actionExport, SIGNAL(triggered()), this, SLOT(onExport()));
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
     connect(ui->actionUndo, SIGNAL(triggered()), this, SLOT(onUndo()));
     connect(ui->actionRedo, SIGNAL(triggered()), this, SLOT(onRedo()));
@@ -614,6 +617,168 @@ void MainWindow::saveRecentFolders()
         recentFolders.append(dir);
     }
     settings.setValue("recentFolders", recentFolders);
+}
+
+QString getClassListFilename(const QString& currentWorkingFolder)
+{
+    return currentWorkingFolder + "/" + classListFilename;
+}
+
+void MainWindow::onExport()
+{
+    QSettings settings(companyName, applicationName);
+    QString defaultExportDirectory = settings.value("defaultExportDirectory").toString();
+    if (defaultExportDirectory.isEmpty()) {
+#ifdef _WIN32
+        defaultExportDirectory = "C:\\";
+#endif
+    }
+
+    const QString dir = QFileDialog::getExistingDirectory(this,
+                                                          tr("Select a folder where to export the annotations and the corresponding images"),
+                                                          defaultExportDirectory,
+                                                          QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+
+    if (!dir.isEmpty()) {
+        settings.setValue("defaultExportDirectory", dir);
+
+        saveMaskIfDirty();
+
+        QDir directory(dir);
+
+        if (!directory.exists()) {
+            QMessageBox::critical(this, tr("No such directory"), tr("Directory \"%1\" does not exist").arg(dir));
+            return;
+        }
+
+        QDirIterator dirIterator(dir,
+                                 QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot,
+                                 QDirIterator::Subdirectories);
+
+        if (dirIterator.hasNext()) {
+            auto reply = QMessageBox::question(this,
+                                               tr("Directory not empty"),
+                                               tr("Directory %1 is not empty!\n\nProceed anyway?").arg(dir),
+                                               QMessageBox::Yes | QMessageBox::No);
+            if (reply != QMessageBox::Yes) {
+                return;
+            }
+        }
+
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+
+        std::deque<std::pair<QString, QString>> imagesWithAnnotations;
+
+        const int total = files->count();
+        for (int row = 0; row < total; ++row) {
+            const auto* item = files->item(row);
+            if (item->textColor() == Qt::black) {
+                imagesWithAnnotations.push_back(std::make_pair(
+                    item->text(),
+                    item->data(fullnameRole).toString())
+                );
+            }
+        }
+
+        QApplication::restoreOverrideCursor();
+
+        const int count = static_cast<int>(imagesWithAnnotations.size());
+
+        QProgressDialog progress(tr("Exporting %1 images to %2 ...").arg(QString::number(count), dir), "Cancel", 0, count, this);
+
+        progress.setWindowModality(Qt::WindowModal);
+
+        size_t fileCount = 0;
+
+        for (int i = 0; i < count; i++) {
+            progress.setValue(i);
+
+            if (progress.wasCanceled()) {
+                break;
+            }
+
+            std::deque<std::pair<QString, QString>> allSourceFilesForThisImage;
+
+            allSourceFilesForThisImage.push_back(imagesWithAnnotations[i]);
+
+            {
+                const auto maskFilename = getMaskFilename(imagesWithAnnotations[i].second);
+                if (QFile().exists(maskFilename)) {
+                    allSourceFilesForThisImage.push_back(std::make_pair(
+                        getMaskFilename(imagesWithAnnotations[i].first),
+                        getMaskFilename(imagesWithAnnotations[i].second)
+                    ));
+                }
+            }
+
+            {
+                const auto thingAnnotationsPathFilename = getThingAnnotationsPathFilename(imagesWithAnnotations[i].second);
+                if (QFile().exists(thingAnnotationsPathFilename)) {
+                    allSourceFilesForThisImage.push_back(std::make_pair(
+                        getThingAnnotationsPathFilename(imagesWithAnnotations[i].first),
+                        getThingAnnotationsPathFilename(imagesWithAnnotations[i].second)
+                    ));
+                }
+            }
+
+            if (i == 0) { // it is enough to do this once
+                if (QFile(getClassListFilename(currentWorkingFolder)).exists()) {
+                    allSourceFilesForThisImage.push_back(std::make_pair(
+                        classListFilename,
+                        getClassListFilename(currentWorkingFolder)
+                    ));
+                }
+            }
+
+            for (int j = 0; j < allSourceFilesForThisImage.size(); ++j) {
+                QString source = allSourceFilesForThisImage[j].first;
+                QString sourceFull = allSourceFilesForThisImage[j].second;
+
+                QString destination = dir + "/" + source;
+
+                const auto last = destination.lastIndexOf("/");
+
+                QString destinationDir = ".";
+
+                if (last != -1) {
+                    destinationDir = destination.left(last);
+
+                    if (!QDir().exists(destinationDir)) {
+                        if (!QDir().mkpath(destinationDir)) {
+                            progress.setValue(count);
+                            QMessageBox::critical(this, "Error creating directory", tr("Unable to create destination directory %1").arg(destinationDir));
+                            return;
+                        }
+                    }
+                }
+
+                if (QFile().exists(destination)) {
+                    if (!QFile().remove(destination)) {
+                        progress.setValue(count);
+                        QMessageBox::critical(this, "Error removing existing file", tr("Error removing existing file %1").arg(destination));
+                        return;
+                    }
+                }
+
+                if (!QFile().copy(sourceFull, destination)) {
+                    progress.setValue(count);
+                    QMessageBox::critical(this, "Error copying file", tr("Error copying file %1 to %2").arg(sourceFull, destinationDir));
+                    return;
+                }
+
+                ++fileCount;
+            }
+        }
+
+        if (!progress.wasCanceled()) {
+            progress.setValue(count);
+            QMessageBox::information(this,
+                                     tr("Export complete"),
+                                     tr("Exported %1 images (%2 files) to %3").arg(QString::number(count),
+                                                                                   QString::number(fileCount),
+                                                                                   dir));
+        }
+    }
 }
 
 void MainWindow::onFileClicked(QListWidgetItem* item)
@@ -1342,11 +1507,6 @@ void MainWindow::addNewClass(const QString& className, QColor color)
     annotationClassItems.push_back(classItem);
 
     onAnnotationClassClicked(classItem.listWidgetItem);
-}
-
-QString getClassListFilename(const QString& currentWorkingFolder)
-{
-    return currentWorkingFolder + "/anno_classes.json";
 }
 
 void MainWindow::loadClassList()
