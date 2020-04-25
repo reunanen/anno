@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent) :
     recentFoldersMenu = new QMenu(tr("&Recent folders"), this);
     ui->menuFile->insertMenu(ui->actionExit, recentFoldersMenu);
 
-    setWindowTitle("anno");
+    setWindowTitle("anno-isto");
 
     const QSettings settings(companyName, applicationName);
     reverseFileOrder = settings.value("reverseFileOrder").toBool();
@@ -509,7 +509,7 @@ void MainWindow::openFolder(const QString& dir)
 {
     saveMaskIfDirty();
 
-    setWindowTitle(tr("anno @ %1").arg(dir));
+    setWindowTitle(tr("anno-isto @ %1").arg(dir));
 
     if (!files) {
         createFileList();
