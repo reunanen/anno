@@ -515,7 +515,6 @@ void MainWindow::openFolder(const QString& dir)
         createFileList();
     }
 
-    terminateMissingFilesSearchAndWaitUntilFinished();
     assert(!missingFiles.valid());
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
@@ -1013,22 +1012,6 @@ void MainWindow::setClassItemColor(QListWidgetItem* listWidgetItem, QColor color
     listWidgetItem->setTextColor(hslColor.lightness() < 128 ? Qt::white : Qt::black);
 }
 
-void MainWindow::terminateMissingFilesSearchAndWaitUntilFinished()
-{
-    if (missingFiles.valid()) {
-        if (missingFiles.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
-            QApplication::setOverrideCursor(Qt::WaitCursor);
-            QApplication::processEvents(); // actually update the cursor
-
-            missingFilesSearchShouldBeTerminated = true;
-            missingFiles.wait();
-
-            QApplication::restoreOverrideCursor();
-        }
-        missingFiles.get();
-    }
-}
-
 void MainWindow::onAnnotateStuff(bool toggled)
 {
     markingRadius->setEnabled(toggled);
@@ -1230,7 +1213,6 @@ void MainWindow::onAnnotationUpdated()
         QTimer::singleShot(10000, this, SLOT(onSaveMask()));
 
         if (currentImageFileItem != nullptr) {
-            terminateMissingFilesSearchAndWaitUntilFinished();
             currentImageFileItem->setTextColor(Qt::black); // now we will have a mask file
         }
 
@@ -1290,7 +1272,6 @@ void MainWindow::saveCurrentThingAnnotations()
         }
 
         if (currentImageFileItem != nullptr) {
-            terminateMissingFilesSearchAndWaitUntilFinished();
             currentImageFileItem->setTextColor(Qt::black); // now we will have an annotation file
         }
     }
@@ -1647,7 +1628,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     else if (key == Qt::Key_S) {
         reverseFileOrder = !reverseFileOrder;
         if (files) {
-            terminateMissingFilesSearchAndWaitUntilFinished();
             QApplication::setOverrideCursor(Qt::WaitCursor);
             files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
             auto* currentItem = files->currentItem();
@@ -1683,7 +1663,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
             }
             else {
 
-                deletingFile = true;
+                currentlyDeletingFile = true;
 
                 saveMaskIfDirty();
 
@@ -1776,7 +1756,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                         };
 
                         if (deleteAnnotations()) {
-                            terminateMissingFilesSearchAndWaitUntilFinished();
                             files->item(row)->setTextColor(Qt::gray);
                         }
                     }
@@ -1821,7 +1800,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                     };
 
                     const auto removeImageFromList = [row, this]() {
-                        terminateMissingFilesSearchAndWaitUntilFinished();
                         QListWidgetItem* item = files->takeItem(row);
                         delete item;
                         loadFile(files->item(files->currentRow()));
@@ -1832,7 +1810,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                     }
                 }
 
-                deletingFile = false;
+                currentlyDeletingFile = false;
             }
         }
     }
@@ -1987,8 +1965,10 @@ void MainWindow::onRestoreDefaultWindowPositions()
     restoreState(defaultState);
 }
 
-void MainWindow::onIdle()
+void MainWindow::markMissingFilesRed(const std::chrono::milliseconds& maxDuration)
 {
+    const auto startTime = std::chrono::steady_clock::now();
+
     const auto checkCurrentFile = [this]() {
         if (currentImageFileItem != nullptr) {
             if (!QFile::exists(currentImageFile)) {
@@ -1998,49 +1978,32 @@ void MainWindow::onIdle()
         }
     };
 
-    if (!deletingFile) {
-        if (missingFiles.valid()) {
-            if (missingFiles.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-                checkCurrentFile();
-                for (auto&& item : missingFiles.get()) {
+    checkCurrentFile();
+
+    if (files->count() > 0) {
+        const QColor red(Qt::red);
+        int firstChecked = -1;
+        do {
+            if (nextMissingFileIndexToCheck >= files->count()) {
+                nextMissingFileIndexToCheck = 0;
+            }
+            if (firstChecked == -1) {
+                firstChecked = nextMissingFileIndexToCheck;
+            }
+            QListWidgetItem* item = files->item(nextMissingFileIndexToCheck);
+            if (!item->textColor().rgb() != red.rgb()) {
+                QString filename = item->data(fullnameRole).toString();
+                if (!QFile::exists(filename)) {
                     item->setTextColor(Qt::red);
                 }
-                checkCurrentFile();
-                missingFilesSearchCompleted = std::chrono::steady_clock::now();
             }
-        }
-        else {
-            checkCurrentFile();
-
-            const bool firstSearchInitiated = missingFilesSearchInitiated > std::chrono::steady_clock::time_point();
-
-            if (missingFilesSearchCompleted > missingFilesSearchInitiated || !firstSearchInitiated) {
-                const auto durationSinceCompleted = std::chrono::steady_clock::now() - missingFilesSearchCompleted;
-                const auto durationLastSearch = missingFilesSearchCompleted - missingFilesSearchInitiated;
-                if (durationSinceCompleted > durationLastSearch * 10) {
-                    const auto findMissingFiles = [this]() {
-                        const QColor red(Qt::red);
-                        std::deque<QListWidgetItem*> missingFiles;
-                        for (int i = 0, end = files->count(); i < end && !missingFilesSearchShouldBeTerminated; ++i) {
-                            QListWidgetItem* item = files->item(i);
-                            if (!item->textColor().rgb() != red.rgb()) {
-                                QString filename = item->data(fullnameRole).toString();
-                                if (!QFile::exists(filename)) {
-                                    missingFiles.push_back(item);
-                                }
-                            }
-                        }
-                        return missingFiles;
-                    };
-
-                    missingFilesSearchShouldBeTerminated = false;
-                    missingFilesSearchInitiated = std::chrono::steady_clock::now();
-                    missingFiles = std::async(std::launch::async, findMissingFiles);
-                }
-            }
-        }
+            ++nextMissingFileIndexToCheck;
+        } while (std::chrono::steady_clock::now() - startTime <= maxDuration && nextMissingFileIndexToCheck != firstChecked);
     }
+}
 
+void MainWindow::onIdle() {
+    markMissingFilesRed(std::chrono::milliseconds(10));
     QTimer::singleShot(100, this, SLOT(onIdle()));
 }
 

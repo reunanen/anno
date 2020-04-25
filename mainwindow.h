@@ -108,7 +108,7 @@ private:
     bool conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor);
     static void setClassItemColor(QListWidgetItem* listWidgetItem, QColor color);
 
-    void terminateMissingFilesSearchAndWaitUntilFinished();
+    void markMissingFilesRed(const std::chrono::milliseconds& maxDuration);
 
     struct InferenceResults
     {
@@ -197,11 +197,8 @@ private:
 
     claim::PostOffice postOffice;
 
-    std::future<std::deque<QListWidgetItem*>> missingFiles;
-    std::chrono::steady_clock::time_point missingFilesSearchInitiated;
-    std::chrono::steady_clock::time_point missingFilesSearchCompleted;
-    std::atomic<bool> missingFilesSearchShouldBeTerminated;
-    bool deletingFile = false;
+    bool currentlyDeletingFile = false;
+    int nextMissingFileIndexToCheck = 0;
 };
 
 #endif // MAINWINDOW_H
