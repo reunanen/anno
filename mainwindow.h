@@ -16,7 +16,9 @@ class QRadioButton;
 class QPushButton;
 
 #include "QResultImageView/QResultImageView.h"
+
 #include <deque>
+#include <future>
 
 class MainWindow : public QMainWindow
 {
@@ -66,6 +68,7 @@ private slots:
     void onNewMarkingRadius(int newMarkingRadius);
     void onAnnotationsVisible(bool visible);
     void onRestoreDefaultWindowPositions();
+    void onIdle();
     void onAbout();
 
 private:
@@ -104,6 +107,8 @@ private:
 
     bool conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor);
     static void setClassItemColor(QListWidgetItem* listWidgetItem, QColor color);
+
+    void terminateMissingFilesSearchAndWaitUntilFinished();
 
     struct InferenceResults
     {
@@ -191,6 +196,10 @@ private:
     QImage currentlyShownImage;
 
     claim::PostOffice postOffice;
+
+    std::future<std::deque<QListWidgetItem*>> missingFiles;
+    std::atomic<bool> missingFilesSearchShouldBeTerminated;
+    bool deletingFile = false;
 };
 
 #endif // MAINWINDOW_H
