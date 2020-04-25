@@ -105,6 +105,14 @@ private:
     bool conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor);
     static void setClassItemColor(QListWidgetItem* listWidgetItem, QColor color);
 
+    struct InferenceResults
+    {
+        std::vector<QResultImageView::Result> results;
+        QString error;
+    };
+
+    InferenceResults readResultsJSON(const QString& filename);
+
     Ui::MainWindow* ui;
     QListWidget* files = nullptr;
     QResultImageView* image = nullptr;
@@ -152,12 +160,6 @@ private:
     QString currentWorkingFolder;
     QListWidgetItem* currentImageFileItem = nullptr;
     QString currentImageFile;
-
-    struct InferenceResults
-    {
-        std::vector<QResultImageView::Result> results;
-        QString error;
-    };
 
     InferenceResults currentResults;
     InferenceResults currentThingAnnotations;
