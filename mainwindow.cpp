@@ -1674,7 +1674,14 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         if (files->hasFocus()) {
             const int row = files->currentRow();
             const QString filename = files->item(row)->data(fullnameRole).toString();
-            if (filename.length() > 0) {
+
+            if (filename.isEmpty()) {
+                ; // nothing to do (shouldn't normally happen)
+            }
+            else if (files->item(row)->textColor().rgb() == QColor(Qt::red).rgb() || !QFile::exists(filename)) {
+                QMessageBox::warning(this, tr("File no longer exists"), tr("File %1 no longer exists").arg(filename));
+            }
+            else {
 
                 deletingFile = true;
 
@@ -1999,28 +2006,38 @@ void MainWindow::onIdle()
                     item->setTextColor(Qt::red);
                 }
                 checkCurrentFile();
+                missingFilesSearchCompleted = std::chrono::steady_clock::now();
             }
         }
         else {
             checkCurrentFile();
 
-            const auto findMissingFiles = [this]() {
-                const QColor red(Qt::red);
-                std::deque<QListWidgetItem*> missingFiles;
-                for (int i = 0, end = files->count(); i < end && !missingFilesSearchShouldBeTerminated; ++i) {
-                    QListWidgetItem* item = files->item(i);
-                    if (!item->textColor().rgb() != red.rgb()) {
-                        QString filename = item->data(fullnameRole).toString();
-                        if (!QFile::exists(filename)) {
-                            missingFiles.push_back(item);
-                        }
-                    }
-                }
-                return missingFiles;
-            };
+            const bool firstSearchInitiated = missingFilesSearchInitiated > std::chrono::steady_clock::time_point();
 
-            missingFilesSearchShouldBeTerminated = false;
-            missingFiles = std::async(std::launch::async, findMissingFiles);
+            if (missingFilesSearchCompleted > missingFilesSearchInitiated || !firstSearchInitiated) {
+                const auto durationSinceCompleted = std::chrono::steady_clock::now() - missingFilesSearchCompleted;
+                const auto durationLastSearch = missingFilesSearchCompleted - missingFilesSearchInitiated;
+                if (durationSinceCompleted > durationLastSearch * 10) {
+                    const auto findMissingFiles = [this]() {
+                        const QColor red(Qt::red);
+                        std::deque<QListWidgetItem*> missingFiles;
+                        for (int i = 0, end = files->count(); i < end && !missingFilesSearchShouldBeTerminated; ++i) {
+                            QListWidgetItem* item = files->item(i);
+                            if (!item->textColor().rgb() != red.rgb()) {
+                                QString filename = item->data(fullnameRole).toString();
+                                if (!QFile::exists(filename)) {
+                                    missingFiles.push_back(item);
+                                }
+                            }
+                        }
+                        return missingFiles;
+                    };
+
+                    missingFilesSearchShouldBeTerminated = false;
+                    missingFilesSearchInitiated = std::chrono::steady_clock::now();
+                    missingFiles = std::async(std::launch::async, findMissingFiles);
+                }
+            }
         }
     }
 

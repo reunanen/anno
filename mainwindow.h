@@ -198,6 +198,8 @@ private:
     claim::PostOffice postOffice;
 
     std::future<std::deque<QListWidgetItem*>> missingFiles;
+    std::chrono::steady_clock::time_point missingFilesSearchInitiated;
+    std::chrono::steady_clock::time_point missingFilesSearchCompleted;
     std::atomic<bool> missingFilesSearchShouldBeTerminated;
     bool deletingFile = false;
 };
