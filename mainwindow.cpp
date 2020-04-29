@@ -162,6 +162,9 @@ void MainWindow::init()
         }
     }
 
+    restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
+    restoreState(settings.value("mainWindowState").toByteArray());
+
     connect(files, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)), this, SLOT(onFileItemChanged(QListWidgetItem*, QListWidgetItem*)));
 
     setFocusPolicy(Qt::StrongFocus);
