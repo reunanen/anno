@@ -162,6 +162,8 @@ void MainWindow::init()
         }
     }
 
+    connect(files, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)), this, SLOT(onFileItemChanged(QListWidgetItem*, QListWidgetItem*)));
+
     setFocusPolicy(Qt::StrongFocus);
 }
 
@@ -215,7 +217,6 @@ void MainWindow::createFileList()
 
     connect(files, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onFileClicked(QListWidgetItem*)));
     connect(files, SIGNAL(activated(const QModelIndex&)), this, SLOT(onFileActivated(const QModelIndex&)));
-    connect(files, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(onFileItemChanged(QListWidgetItem*,QListWidgetItem*)));
 }
 
 void MainWindow::createToolList()
