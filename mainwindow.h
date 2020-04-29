@@ -66,7 +66,7 @@ private slots:
     void onNewMarkingRadius(int newMarkingRadius);
     void onAnnotationsVisible(bool visible);
     void onRestoreDefaultWindowPositions();
-    void onDirectoryChanged(const QString& directory);
+    void onFileChanged(const QString& filename);
     void onAbout();
 
 private:
@@ -106,7 +106,7 @@ private:
     bool conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor);
     static void setClassItemColor(QListWidgetItem* listWidgetItem, QColor color);
 
-    void addFileSystemWatcher(const QString& dir);
+    void addFileSystemWatcher();
     void removeCurrentFileSystemWatcher();
 
     struct InferenceResults
