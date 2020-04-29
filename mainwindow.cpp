@@ -132,6 +132,12 @@ void MainWindow::init()
 
     showMaximized();
 
+    defaultGeometry = saveGeometry();
+    defaultState = saveState();
+
+    /*const bool geometryRestored =*/ restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
+    /*const bool stateRestored =*/ restoreState(settings.value("mainWindowState").toByteArray());
+
     if (files->count() > 0) {
         const QString defaultFile = settings.value("defaultFile").toString();
         bool defaultFileFound = false;
@@ -155,12 +161,6 @@ void MainWindow::init()
             onFileClicked(firstFile);
         }
     }
-
-    defaultGeometry = saveGeometry();
-    defaultState = saveState();
-
-    /*const bool geometryRestored =*/ restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
-    /*const bool stateRestored =*/ restoreState(settings.value("mainWindowState").toByteArray());
 
     setFocusPolicy(Qt::StrongFocus);
 }
