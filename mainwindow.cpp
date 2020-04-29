@@ -1161,6 +1161,24 @@ void MainWindow::onChannelSelectionToggled(bool /*toggled*/)
 
 void MainWindow::onAnnotationUpdated()
 {
+    if (currentImageFileItem != nullptr) {
+        // Make the image read-only
+        const QString filename = currentImageFileItem->data(fullnameRole).toString();
+
+        QFile file(filename);
+
+        const auto currentPermissions = file.permissions();
+
+        const auto newPermissions = currentPermissions
+                & ~QFileDevice::WriteOwner
+                & ~QFileDevice::WriteUser
+                & ~QFileDevice::WriteGroup
+                & ~QFileDevice::WriteOther
+                ;
+
+        file.setPermissions(newPermissions);
+    }
+
     if (annotateThings->isChecked()) {
         annotationUndoBuffer.push_back(currentThingAnnotations.results);
         limitUndoOrRedoBufferSize(annotationUndoBuffer);
@@ -1718,6 +1736,15 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 
                         if (deleteAnnotations()) {
                             files->item(row)->setTextColor(Qt::gray);
+
+                            // Make file writable again
+                            QFile file(filename);
+
+                            const auto currentPermissions = file.permissions();
+
+                            const auto newPermissions = currentPermissions | QFileDevice::WriteOwner;
+
+                            file.setPermissions(newPermissions);
                         }
                     }
                 }
