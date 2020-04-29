@@ -166,8 +166,13 @@ void MainWindow::init()
         }
     }
 
+    restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
+    restoreState(settings.value("mainWindowState").toByteArray());
+
     numcfc::IniFile iniFile("anno.ini");
     postOffice.Initialize(iniFile, "anno");
+
+    connect(files, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)), this, SLOT(onFileItemChanged(QListWidgetItem*, QListWidgetItem*)));
 
     QTimer::singleShot(100, this, SLOT(onIdle()));
 
@@ -212,6 +217,7 @@ void MainWindow::createFileList()
     fileListDockWidget->setObjectName("Files");
 
     files = new QListWidget(this);
+    files->setUniformItemSizes(true);
 
     fileListDockWidget->setWidget(files);
     addDockWidget(Qt::LeftDockWidgetArea, fileListDockWidget);
@@ -226,7 +232,6 @@ void MainWindow::createFileList()
 
     connect(files, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onFileClicked(QListWidgetItem*)));
     connect(files, SIGNAL(activated(const QModelIndex&)), this, SLOT(onFileActivated(const QModelIndex&)));
-    connect(files, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(onFileItemChanged(QListWidgetItem*,QListWidgetItem*)));
 }
 
 void MainWindow::createToolList()
@@ -520,6 +525,8 @@ void MainWindow::openFolder(const QString& dir)
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QApplication::processEvents(); // actually update the cursor
 
+    files->setUpdatesEnabled(false);
+
     files->clear();
     currentImageFileItem = nullptr;
 
@@ -554,6 +561,8 @@ void MainWindow::openFolder(const QString& dir)
     }
 
     files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
+
+    files->setUpdatesEnabled(true);
 
     currentWorkingFolder = dir;
 
@@ -1370,7 +1379,7 @@ void MainWindow::onAddClass()
             if (color.isValid()) {
                 const auto minAlpha = 32;
                 if (color.alpha() < minAlpha) {
-                    QMessageBox::warning(this, tr("Invalid color"), tr("The alpha must be ≥ %1. (Now %2.)").arg(minAlpha, color.alpha()));
+                    QMessageBox::warning(this, tr("Invalid color"), tr("The alpha must be = %1. (Now %2.)").arg(minAlpha, color.alpha()));
                 }
                 else {
                     QColor roundedColor = color;
