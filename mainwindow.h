@@ -13,6 +13,7 @@ class QSpinBox;
 class QCheckBox;
 class QRadioButton;
 class QPushButton;
+class QFileSystemWatcher;
 
 #include "QResultImageView/QResultImageView.h"
 #include <deque>
@@ -65,6 +66,7 @@ private slots:
     void onNewMarkingRadius(int newMarkingRadius);
     void onAnnotationsVisible(bool visible);
     void onRestoreDefaultWindowPositions();
+    void onFileChanged(const QString& filename);
     void onAbout();
 
 private:
@@ -103,6 +105,9 @@ private:
 
     bool conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor);
     static void setClassItemColor(QListWidgetItem* listWidgetItem, QColor color);
+
+    void addFileSystemWatcher();
+    void removeCurrentFileSystemWatcher();
 
     struct InferenceResults
     {
@@ -188,6 +193,8 @@ private:
 
     QImage originalImage;
     QImage currentlyShownImage;
+
+    QFileSystemWatcher* fileSystemWatcher = nullptr;
 };
 
 #endif // MAINWINDOW_H

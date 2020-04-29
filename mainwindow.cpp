@@ -30,6 +30,7 @@
 #include <QJsonObject>
 #include <QBuffer>
 #include <QKeyEvent>
+#include <QFileSystemWatcher>
 #include <QtUiTools>
 #include <assert.h>
 
@@ -76,6 +77,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    removeCurrentFileSystemWatcher();
+
     delete ui;
 }
 
@@ -505,6 +508,12 @@ void MainWindow::openFolder(const QString& dir)
         createFileList();
     }
 
+    if (fileSystemWatcher) {
+        removeCurrentFileSystemWatcher();
+    }
+
+    addFileSystemWatcher();
+
     files->clear();
     currentImageFileItem = nullptr;
 
@@ -525,6 +534,7 @@ void MainWindow::openFolder(const QString& dir)
         const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
         const auto isInferenceResultFilename = [&]() { return filename.right(inferenceResultFilenameSuffix.length()) == inferenceResultFilenameSuffix; };
         if (!isMaskFilename() && !isInferenceResultFilename()) {
+            fileSystemWatcher->addPath(filename);
             const QString displayName = filename.mid(dir.length() + 1);
             QListWidgetItem* item = new QListWidgetItem(displayName, files);
             QFileInfo maskFileInfo(getMaskFilename(filename));
@@ -561,6 +571,43 @@ void MainWindow::openFolder(const QString& dir)
     }
     else {
         conditionallyChangeFirstClass(ignoreClassLabel, ignoreColor, cleanClassLabel, cleanColor);
+    }
+
+    QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::addFileSystemWatcher()
+{
+    fileSystemWatcher = new QFileSystemWatcher;
+
+    connect(fileSystemWatcher, SIGNAL(fileChanged(QString)), this, SLOT(onFileChanged(QString)));
+}
+
+void MainWindow::removeCurrentFileSystemWatcher()
+{
+    if (fileSystemWatcher) {
+        disconnect(fileSystemWatcher, SIGNAL(fileChanged(QString)), this, SLOT(onFileChanged(QString)));
+        delete fileSystemWatcher;
+        fileSystemWatcher = nullptr;
+    }
+}
+
+void MainWindow::onFileChanged(const QString& filename)
+{
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    for (int i = 0, end = files->count(); i < end; ++i) {
+        const auto item = files->item(i);
+        QString name = item->data(fullnameRole).toString();
+        if (name == filename) {
+            if (!QFile::exists(name)) {
+                item->setTextColor(Qt::red);
+
+                if (item == currentImageFileItem) {
+                    image->setImage(QImage());
+                }
+            }
+        }
     }
 
     QApplication::restoreOverrideCursor();
