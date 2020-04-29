@@ -513,7 +513,7 @@ void MainWindow::openFolder(const QString& dir)
         removeCurrentFileSystemWatcher();
     }
 
-    addFileSystemWatcher();
+    addFileSystemWatcher(dir);
 
     files->setUpdatesEnabled(false);
 
@@ -581,35 +581,47 @@ void MainWindow::openFolder(const QString& dir)
     QApplication::restoreOverrideCursor();
 }
 
-void MainWindow::addFileSystemWatcher()
+void MainWindow::addFileSystemWatcher(const QString& dir)
 {
     fileSystemWatcher = new QFileSystemWatcher;
 
-    connect(fileSystemWatcher, SIGNAL(fileChanged(QString)), this, SLOT(onFileChanged(QString)));
+    fileSystemWatcher->addPath(dir);
+
+    QDirIterator it(dir, QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        fileSystemWatcher->addPath(it.next());
+    }
+
+    connect(fileSystemWatcher, SIGNAL(directoryChanged(QString)), this, SLOT(onDirectoryChanged(QString)));
 }
 
 void MainWindow::removeCurrentFileSystemWatcher()
 {
     if (fileSystemWatcher) {
-        disconnect(fileSystemWatcher, SIGNAL(fileChanged(QString)), this, SLOT(onFileChanged(QString)));
+        disconnect(fileSystemWatcher, SIGNAL(directoryChanged(QString)), this, SLOT(onDirectoryChanged(QString)));
         delete fileSystemWatcher;
         fileSystemWatcher = nullptr;
     }
 }
 
-void MainWindow::onFileChanged(const QString& filename)
+void MainWindow::onDirectoryChanged(const QString& directory)
 {
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
+    const QColor red(Qt::red);
+
     for (int i = 0, end = files->count(); i < end; ++i) {
         const auto item = files->item(i);
-        QString name = item->data(fullnameRole).toString();
-        if (name == filename) {
-            if (!QFile::exists(name)) {
-                item->setTextColor(Qt::red);
+        if (!item->textColor().rgb() != red.rgb()) {
+            QString filename = item->data(fullnameRole).toString();
+            const auto minLength = std::min(filename.length(), directory.length());
+            if (filename.left(minLength) == directory) {
+                if (!QFile::exists(filename)) {
+                    item->setTextColor(Qt::red);
 
-                if (item == currentImageFileItem) {
-                    image->setImage(QImage());
+                    if (item == currentImageFileItem) {
+                        image->setImage(QImage());
+                    }
                 }
             }
         }
