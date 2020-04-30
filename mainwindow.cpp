@@ -567,7 +567,7 @@ void MainWindow::openFolder(const QString& dir)
         }
     }
 
-    progress1.setValue(1);
+    progress1.close();
 
     QProgressDialog progress2(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()), tr("Stop"), 0, imageFiles.count() + 1, this);
     progress2.setWindowModality(Qt::WindowModal);
