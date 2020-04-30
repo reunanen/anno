@@ -84,6 +84,7 @@ private:
     static QString getMaskFilenameSuffix();
     static QString getMaskFilename(const QString& baseImageFilename);
 
+    static QString getThingAnnotationsPathFilenameSuffix();
     static QString getThingAnnotationsPathFilename(const QString& baseImageFilename);
 
     static QString getInferenceResultFilenameSuffix();
