@@ -34,8 +34,10 @@
 #include <QBuffer>
 #include <QKeyEvent>
 #include <QtUiTools>
+#include <QHash>
 #include <assert.h>
 #include <chrono>
+#include <unordered_set>
 
 namespace {
     const char* companyName = "Tomaattinen";
@@ -512,6 +514,14 @@ void MainWindow::onOpenRecentFolder()
     }
 }
 
+namespace std {
+  template<> struct hash<QString> {
+    std::size_t operator()(const QString& s) const {
+      return (size_t) qHash(s);
+    }
+  };
+}
+
 void MainWindow::openFolder(const QString& dir)
 {
     saveMaskIfDirty();
@@ -535,6 +545,7 @@ void MainWindow::openFolder(const QString& dir)
     image->resetZoomAndPan();
 
     const QString maskFilenameSuffix = getMaskFilenameSuffix();
+    const QString thingAnnotationsFilenameSuffix = getThingAnnotationsPathFilenameSuffix();
     const QString inferenceResultFilenameSuffix = getInferenceResultFilenameSuffix();
 
     QStringList imageFiles;
@@ -548,14 +559,24 @@ void MainWindow::openFolder(const QString& dir)
     progressBar.setVisible(false);
     progress1.setBar(&progressBar);
 
-    std::chrono::steady_clock::time_point timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
+    auto timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
 
-    QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
+    std::unordered_set<QString> thingAnnotationsFilenames;
+    std::unordered_set<QString> maskFilenames;
+
+    QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png" << ("*" + thingAnnotationsFilenameSuffix), QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext() && !progress1.wasCanceled()) {
         const QString filename = it.next();
+        const auto isThingsModeAnnotationFilename = [&]() { return filename.right(thingAnnotationsFilenameSuffix.length()) == thingAnnotationsFilenameSuffix; };
         const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
         const auto isInferenceResultFilename = [&]() { return filename.right(inferenceResultFilenameSuffix.length()) == inferenceResultFilenameSuffix; };
-        if (!isMaskFilename() && !isInferenceResultFilename()) {
+        if (isThingsModeAnnotationFilename()) {
+            thingAnnotationsFilenames.insert(filename);
+        }
+        else if (isMaskFilename()) {
+            maskFilenames.insert(filename);
+        }
+        else if (!isInferenceResultFilename()) {
             imageFiles.push_back(filename);
         }
         const auto now = std::chrono::steady_clock::now();
@@ -567,22 +588,36 @@ void MainWindow::openFolder(const QString& dir)
         }
     }
 
+    progress1.setLabelText(tr("Sorting %1 file names...").arg(imageFiles.count()));
+    QApplication::processEvents(); // update the dialog
+
+    if (reverseFileOrder) {
+        qSort(imageFiles.begin(), imageFiles.end(), qGreater<QString>());
+    }
+    else {
+        qSort(imageFiles.begin(), imageFiles.end(), qLess<QString>());
+    }
+
     progress1.close();
 
     QProgressDialog progress2(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()), tr("Stop"), 0, imageFiles.count() + 1, this);
     progress2.setWindowModality(Qt::WindowModal);
-    progress2.setMinimumDuration(100);
+    progress2.setMinimumDuration(1000);
+
+    auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
     for (int i = 0; i < imageFiles.count() && !progress2.wasCanceled(); ++i) {
-        progress2.setValue(i);
+        const auto now = std::chrono::steady_clock::now();
+        if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(1000)) {
+            progress2.setValue(i);
+            timeWhenProgressLastUpdated = now;
+        }
         const QString filename = imageFiles[i];
         const QString displayName = filename.mid(dir.length() + 1);
         QListWidgetItem* item = new QListWidgetItem(displayName, files);
-        QFileInfo maskFileInfo(getMaskFilename(filename));
-        QFileInfo thingAnnotationsFileInfo(getThingAnnotationsPathFilename(filename));
-        const bool maskFileExists = maskFileInfo.exists() && maskFileInfo.isFile();
-        const bool thingAnnotationsFileExists = thingAnnotationsFileInfo.exists() && thingAnnotationsFileInfo.isFile();
-        if (maskFileExists || thingAnnotationsFileExists) {
+        const auto maskFileExists = [&]() { return maskFilenames.find(getMaskFilename(filename)) != maskFilenames.end(); };
+        const auto thingAnnotationsFileExists = [&]() { return thingAnnotationsFilenames.find(getThingAnnotationsPathFilename(filename)) != thingAnnotationsFilenames.end(); };
+        if (maskFileExists() || thingAnnotationsFileExists()) {
             item->setTextColor(Qt::black);
         }
         else {
@@ -594,8 +629,6 @@ void MainWindow::openFolder(const QString& dir)
     if (!progress2.wasCanceled()) {
         progress2.setValue(imageFiles.count());
     }
-
-    files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
 
     files->setUpdatesEnabled(true);
 
@@ -1391,9 +1424,14 @@ QString MainWindow::getInferenceResultFilenameSuffix()
     return "_result.png";
 }
 
+QString MainWindow::getThingAnnotationsPathFilenameSuffix()
+{
+    return "_annotation_paths.json";
+}
+
 QString MainWindow::getThingAnnotationsPathFilename(const QString& baseImageFilename)
 {
-    return baseImageFilename + "_annotation_paths.json";
+    return baseImageFilename + getThingAnnotationsPathFilenameSuffix();
 }
 
 QString MainWindow::getInferenceResultPathFilename(const QString& baseImageFilename)
