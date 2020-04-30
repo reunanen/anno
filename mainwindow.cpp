@@ -566,6 +566,7 @@ void MainWindow::openFolder(const QString& dir)
     progress1.setWindowModality(Qt::WindowModal);
 
     // For this progress, we don't really know the maximum, so let's not show the bar at all
+    // TODO: this doesn't work as expected with the Appveyor build!
     QProgressBar progressBar;
     progressBar.setVisible(false);
     progress1.setBar(&progressBar);
