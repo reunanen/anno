@@ -535,7 +535,7 @@ void MainWindow::openFolder(const QString& dir)
     progressBar.setVisible(false);
     progress1.setBar(&progressBar);
 
-    std::chrono::steady_clock::time_point timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
+    auto timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
 
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext() && !progress1.wasCanceled()) {
@@ -558,10 +558,16 @@ void MainWindow::openFolder(const QString& dir)
 
     QProgressDialog progress2(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()), tr("Stop"), 0, imageFiles.count() + 1, this);
     progress2.setWindowModality(Qt::WindowModal);
-    progress2.setMinimumDuration(100);
+    progress2.setMinimumDuration(1000);
+
+    auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
     for (int i = 0; i < imageFiles.count() && !progress2.wasCanceled(); ++i) {
-        progress2.setValue(i);
+        const auto now = std::chrono::steady_clock::now();
+        if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(1000)) {
+            progress2.setValue(i);
+            timeWhenProgressLastUpdated = now;
+        }
         const QString filename = imageFiles[i];
         const QString displayName = filename.mid(dir.length() + 1);
         QListWidgetItem* item = new QListWidgetItem(displayName, files);
@@ -581,6 +587,9 @@ void MainWindow::openFolder(const QString& dir)
     if (!progress2.wasCanceled()) {
         progress2.setValue(imageFiles.count());
     }
+
+    progress2.setLabelText(tr("Sorting %1 file names...").arg(files->count()));
+    QApplication::processEvents(); // update the dialog
 
     files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
 
