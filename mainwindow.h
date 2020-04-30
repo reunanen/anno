@@ -68,7 +68,7 @@ private slots:
     void onNewMarkingRadius(int newMarkingRadius);
     void onAnnotationsVisible(bool visible);
     void onRestoreDefaultWindowPositions();
-    void keepMarkingMissingFilesRed();
+    void onIdle();
     void onAbout();
 
 private:
@@ -196,10 +196,6 @@ private:
     QImage currentlyShownImage;
 
     claim::PostOffice postOffice;
-
-    bool currentlyDeletingFile = false;
-    int nextMissingFileIndexToCheck = 0;
-    std::deque<int> remainingMissingFileCandidates;
 };
 
 #endif // MAINWINDOW_H

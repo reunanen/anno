@@ -73,6 +73,11 @@ MainWindow::MainWindow(QWidget *parent) :
         addRecentFolderMenuItem(recentFolders[i]);
     }
 
+    numcfc::IniFile iniFile("anno.ini");
+
+    postOffice.Initialize(iniFile, "anno");
+    postOffice.Subscribe("ImageDeleted");
+
     QTimer::singleShot(0, this, SLOT(init()));
 }
 
@@ -168,9 +173,6 @@ void MainWindow::init()
 
     restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
     restoreState(settings.value("mainWindowState").toByteArray());
-
-    numcfc::IniFile iniFile("anno.ini");
-    postOffice.Initialize(iniFile, "anno");
 
     connect(files, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)), this, SLOT(onFileItemChanged(QListWidgetItem*, QListWidgetItem*)));
 
@@ -582,16 +584,7 @@ void MainWindow::openFolder(const QString& dir)
         conditionallyChangeFirstClass(ignoreClassLabel, ignoreColor, cleanClassLabel, cleanColor);
     }
 
-    remainingMissingFileCandidates.clear();
-    const QColor gray(Qt::gray);
-    for (int i = 0, end = files->count(); i < end; ++i) {
-        const auto* item = files->item(i);
-        if (item->textColor().rgb() == gray.rgb()) {
-            remainingMissingFileCandidates.push_back(i);
-        }
-    }
-
-    QTimer::singleShot(100, this, SLOT(keepMarkingMissingFilesRed()));
+    QTimer::singleShot(1000, this, SLOT(onIdle()));
 
     QApplication::restoreOverrideCursor();
 }
@@ -1685,9 +1678,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                 QMessageBox::warning(this, tr("File no longer exists"), tr("File %1 no longer exists").arg(filename));
             }
             else {
-
-                currentlyDeletingFile = true;
-
                 saveMaskIfDirty();
 
                 const auto maskFilename = getMaskFilename(filename);
@@ -1780,10 +1770,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 
                         if (deleteAnnotations()) {
                             files->item(row)->setTextColor(Qt::gray);
-                            if (remainingMissingFileCandidates.empty()) {
-                                QTimer::singleShot(100, this, SLOT(keepMarkingMissingFilesRed()));
-                            }
-                            remainingMissingFileCandidates.push_back(row);
 
                             // Make the image rotating (=not permanent)
                             const QString filename = currentImageFileItem->text();
@@ -1845,8 +1831,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                         removeImageFromList();
                     }
                 }
-
-                currentlyDeletingFile = false;
             }
         }
     }
@@ -2001,67 +1985,38 @@ void MainWindow::onRestoreDefaultWindowPositions()
     restoreState(defaultState);
 }
 
-void MainWindow::keepMarkingMissingFilesRed()
+void MainWindow::onIdle()
 {
-    const auto maxDuration = std::chrono::milliseconds(10);
-
-    const auto startTime = std::chrono::steady_clock::now();
-
-    if (!remainingMissingFileCandidates.empty()) {
-
-        const QColor red(Qt::red), gray(Qt::gray);
-
-        const auto checkCurrentFile = [this, &red]() {
-            if (currentImageFileItem != nullptr && currentImageFileItem->textColor().rgb() != red.rgb()) {
-                if (!QFile::exists(currentImageFile)) {
-                    currentImageFileItem->setTextColor(Qt::red);
-                    image->setImage(QImage());
-                }
-            }
-        };
-
-        checkCurrentFile();
-
-        int firstCheckedIndex = -1;
-
-        const auto removeCurrentCandidateIndex = [&]() {
-            remainingMissingFileCandidates.erase(remainingMissingFileCandidates.begin() + nextMissingFileIndexToCheck);
-            if (firstCheckedIndex >= nextMissingFileIndexToCheck) {
-                --firstCheckedIndex;
-            }
-        };
-
-        do {
-            if (nextMissingFileIndexToCheck >= remainingMissingFileCandidates.size()) {
-                nextMissingFileIndexToCheck = 0;
-            }
-            if (firstCheckedIndex == -1) {
-                firstCheckedIndex = nextMissingFileIndexToCheck;
-            }
-            const auto index = remainingMissingFileCandidates[nextMissingFileIndexToCheck];
-            QListWidgetItem* item = files->item(index);
-            if (item->textColor().rgb() == gray.rgb()) {
-                QString filename = item->data(fullnameRole).toString();
-                if (!QFile::exists(filename)) {
-                    item->setTextColor(red);
-                    removeCurrentCandidateIndex();
-                }
-                else {
-                    ++nextMissingFileIndexToCheck;
-                }
-            }
-            else {
-                removeCurrentCandidateIndex();
-            }
-        } while (std::chrono::steady_clock::now() - startTime <= maxDuration && nextMissingFileIndexToCheck != firstCheckedIndex && !remainingMissingFileCandidates.empty());
-
-        if (!remainingMissingFileCandidates.empty()) {
-            QTimer::singleShot(100, this, SLOT(keepMarkingMissingFilesRed()));
-        }
-        else {
-            QMessageBox::information(this, "No more candidates to check", "No more candidates to check");
+    const QColor red(Qt::red);
+    if (currentImageFileItem != nullptr && currentImageFileItem->textColor().rgb() != red.rgb()) {
+        if (!QFile::exists(currentImageFile)) {
+            currentImageFileItem->setTextColor(Qt::red);
+            image->setImage(QImage());
         }
     }
+
+    slaim::Message msg;
+    while (postOffice.Receive(msg, 0.0)) {
+        if (msg.GetType() == "ImageDeleted") {
+            claim::AttributeMessage amsg(msg);
+            const std::string& id = amsg.m_attributes["id"];
+
+            for (int i = files->count() - 1; i >= 0; --i) {
+                auto* item = files->item(i);
+                if (item->textColor().rgb() != red.rgb()) {
+                    if (getImageId(item->text()) == id) {
+                        item->setTextColor(Qt::red);
+                        if (item == currentImageFileItem) {
+                            image->setImage(QImage());
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    QTimer::singleShot(1000, this, SLOT(onIdle()));
 }
 
 void MainWindow::onAbout()
