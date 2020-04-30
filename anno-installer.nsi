@@ -3,8 +3,8 @@
 !include "MUI.nsh"
 !include "FileFunc.nsh"
 
-Name "anno"
-OutFile "anno-installer-v${VERSION}.exe"
+Name "anno-isto"
+OutFile "anno-isto-installer-v${VERSION}.exe"
 
 InstallDir "$PROGRAMFILES64\anno"
 
