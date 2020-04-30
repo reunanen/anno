@@ -17,5 +17,5 @@ build_script:
   - cd ..
   - makensis anno-installer.nsi
 artifacts:
-  - path: anno-installer-v*.exe
-    name: anno-installer
+  - path: anno-isto-installer-v*.exe
+    name: anno-isto-installer
