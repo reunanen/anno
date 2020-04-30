@@ -599,6 +599,13 @@ void MainWindow::openFolder(const QString& dir)
         }
     }
 
+    while (!imageFiles.empty() && !QFileInfo::exists(imageFiles.first())) {
+        imageFiles.pop_front();
+    }
+    while (!imageFiles.empty() && !QFileInfo::exists(imageFiles.last())) {
+        imageFiles.pop_back();
+    }
+
     progress1.setLabelText(tr("Sorting %1 file names...").arg(imageFiles.count()));
     QApplication::processEvents(); // update the dialog
 
