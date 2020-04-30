@@ -516,14 +516,13 @@ void MainWindow::openFolder(const QString& dir)
 
     resetUndoBuffers();
 
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    QApplication::processEvents(); // actually update the cursor
-
     image->setImage(QImage());
     image->resetZoomAndPan();
 
     const QString maskFilenameSuffix = getMaskFilenameSuffix();
     const QString inferenceResultFilenameSuffix = getInferenceResultFilenameSuffix();
+
+    QStringList imageFiles;
 
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
@@ -531,20 +530,33 @@ void MainWindow::openFolder(const QString& dir)
         const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
         const auto isInferenceResultFilename = [&]() { return filename.right(inferenceResultFilenameSuffix.length()) == inferenceResultFilenameSuffix; };
         if (!isMaskFilename() && !isInferenceResultFilename()) {
-            const QString displayName = filename.mid(dir.length() + 1);
-            QListWidgetItem* item = new QListWidgetItem(displayName, files);
-            QFileInfo maskFileInfo(getMaskFilename(filename));
-            QFileInfo thingAnnotationsFileInfo(getThingAnnotationsPathFilename(filename));
-            const bool maskFileExists = maskFileInfo.exists() && maskFileInfo.isFile();
-            const bool thingAnnotationsFileExists = thingAnnotationsFileInfo.exists() && thingAnnotationsFileInfo.isFile();
-            if (maskFileExists || thingAnnotationsFileExists) {
-                item->setTextColor(Qt::black);
-            }
-            else {
-                item->setTextColor(Qt::gray);
-            }
-            item->setData(fullnameRole, filename);
+            imageFiles.push_back(filename);
         }
+    }
+
+    QProgressDialog progress(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()), tr("Stop"), 0, imageFiles.count() + 1, this);
+    progress.setWindowModality(Qt::WindowModal);
+
+    for (int i = 0; i < imageFiles.count() && !progress.wasCanceled(); ++i) {
+        progress.setValue(i);
+        const QString filename = imageFiles[i];
+        const QString displayName = filename.mid(dir.length() + 1);
+        QListWidgetItem* item = new QListWidgetItem(displayName, files);
+        QFileInfo maskFileInfo(getMaskFilename(filename));
+        QFileInfo thingAnnotationsFileInfo(getThingAnnotationsPathFilename(filename));
+        const bool maskFileExists = maskFileInfo.exists() && maskFileInfo.isFile();
+        const bool thingAnnotationsFileExists = thingAnnotationsFileInfo.exists() && thingAnnotationsFileInfo.isFile();
+        if (maskFileExists || thingAnnotationsFileExists) {
+            item->setTextColor(Qt::black);
+        }
+        else {
+            item->setTextColor(Qt::gray);
+        }
+        item->setData(fullnameRole, filename);
+    }
+
+    if (!progress.wasCanceled()) {
+        progress.setValue(imageFiles.count());
     }
 
     files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
@@ -571,7 +583,7 @@ void MainWindow::openFolder(const QString& dir)
         conditionallyChangeFirstClass(ignoreClassLabel, ignoreColor, cleanClassLabel, cleanColor);
     }
 
-    QApplication::restoreOverrideCursor();
+    progress.setValue(progress.maximum());
 }
 
 void MainWindow::addRecentFolderMenuItem(const QString& dir)
