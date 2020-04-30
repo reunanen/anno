@@ -18,7 +18,7 @@ class QPushButton;
 #include "QResultImageView/QResultImageView.h"
 
 #include <deque>
-#include <future>
+#include <unordered_map>
 
 class MainWindow : public QMainWindow
 {
@@ -109,8 +109,6 @@ private:
     bool conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor);
     static void setClassItemColor(QListWidgetItem* listWidgetItem, QColor color);
 
-    void markMissingFilesRed(const std::chrono::milliseconds& maxDuration);
-
     struct InferenceResults
     {
         std::vector<QResultImageView::Result> results;
@@ -197,6 +195,8 @@ private:
     QImage currentlyShownImage;
 
     claim::PostOffice postOffice;
+
+    std::unordered_map<std::string, int> idToIndex;
 };
 
 #endif // MAINWINDOW_H

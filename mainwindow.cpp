@@ -522,6 +522,16 @@ namespace std {
   };
 }
 
+std::string getImageId(const QString filename)
+{
+    std::string imageId = filename.toLatin1();
+    const auto lastSlashPos = imageId.find_last_of("/\\");
+    if (lastSlashPos != std::string::npos) {
+        imageId = imageId.substr(lastSlashPos + 1);
+    }
+    return imageId;
+}
+
 void MainWindow::openFolder(const QString& dir)
 {
     saveMaskIfDirty();
@@ -537,6 +547,7 @@ void MainWindow::openFolder(const QString& dir)
     files->setUpdatesEnabled(false);
 
     files->clear();
+    idToIndex.clear();
     currentImageFileItem = nullptr;
 
     resetUndoBuffers();
@@ -624,6 +635,7 @@ void MainWindow::openFolder(const QString& dir)
             item->setTextColor(Qt::gray);
         }
         item->setData(fullnameRole, filename);
+        idToIndex[getImageId(filename)] = files->count() - 1;
     }
 
     if (!progress2.wasCanceled()) {
@@ -1249,16 +1261,6 @@ void MainWindow::onChannelSelectionToggled(bool /*toggled*/)
     QApplication::setOverrideCursor(Qt::WaitCursor);
     initCurrentImage();
     QApplication::restoreOverrideCursor();
-}
-
-std::string getImageId(const QString filename)
-{
-    std::string imageId = filename.toLatin1();
-    const auto lastSlashPos = imageId.find_last_of("/\\");
-    if (lastSlashPos != std::string::npos) {
-        imageId = imageId.substr(lastSlashPos + 1);
-    }
-    return imageId;
 }
 
 void MainWindow::onAnnotationUpdated()
@@ -2069,27 +2071,25 @@ void MainWindow::onIdle()
     }
 
     slaim::Message msg;
-    std::unordered_set<std::string> idsToDelete;
 
     while (postOffice.Receive(msg, 0.0)) {
         if (msg.GetType() == "ImageDeleted") {
             claim::AttributeMessage amsg(msg);
             const std::string& id = amsg.m_attributes["id"];
-            idsToDelete.insert(id);
-        }
-    }
-
-    for (int i = 0; i < files->count() && !idsToDelete.empty(); ++i) {
-        const auto j = reverseFileOrder ? files->count() - i - 1 : i;
-        auto* item = files->item(j);
-        if (item->textColor().rgb() != red.rgb()) {
-            const auto id = getImageId(item->text());
-            if (idsToDelete.find(id) != idsToDelete.end()) {
+            const auto i = idToIndex.find(id);
+            if (i != idToIndex.end()) {
+                const auto index = i->second;
+                auto* item = files->item(index);
+                const auto id2 = getImageId(item->text());
+                if (id2 != id) {
+                    const std::string error = id2 + " != " + id;
+                    QMessageBox::critical(this, "Unexpected id", error.c_str());
+                    break;
+                }
                 item->setTextColor(Qt::red);
                 if (item == currentImageFileItem) {
                     image->setImage(QImage());
                 }
-                idsToDelete.erase(id);
             }
         }
     }
