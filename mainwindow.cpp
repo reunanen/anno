@@ -575,7 +575,17 @@ void MainWindow::openFolder(const QString& dir)
         }
     }
 
-    progress1.setValue(1);
+    progress1.setLabelText(tr("Sorting %1 file names...").arg(imageFiles.count()));
+    QApplication::processEvents(); // update the dialog
+
+    if (reverseFileOrder) {
+        qSort(imageFiles.begin(), imageFiles.end(), qGreater<QString>());
+    }
+    else {
+        qSort(imageFiles.begin(), imageFiles.end(), qLess<QString>());
+    }
+
+    progress1.close();
 
     QProgressDialog progress2(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()), tr("Stop"), 0, imageFiles.count() + 1, this);
     progress2.setWindowModality(Qt::WindowModal);
@@ -606,11 +616,6 @@ void MainWindow::openFolder(const QString& dir)
     if (!progress2.wasCanceled()) {
         progress2.setValue(imageFiles.count());
     }
-
-    progress2.setLabelText(tr("Sorting %1 file names...").arg(files->count()));
-    QApplication::processEvents(); // update the dialog
-
-    files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
 
     files->setUpdatesEnabled(true);
 
