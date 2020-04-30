@@ -2069,22 +2069,27 @@ void MainWindow::onIdle()
     }
 
     slaim::Message msg;
+    std::unordered_set<std::string> idsToDelete;
+
     while (postOffice.Receive(msg, 0.0)) {
         if (msg.GetType() == "ImageDeleted") {
             claim::AttributeMessage amsg(msg);
             const std::string& id = amsg.m_attributes["id"];
+            idsToDelete.insert(id);
+        }
+    }
 
-            for (int i = files->count() - 1; i >= 0; --i) {
-                auto* item = files->item(i);
-                if (item->textColor().rgb() != red.rgb()) {
-                    if (getImageId(item->text()) == id) {
-                        item->setTextColor(Qt::red);
-                        if (item == currentImageFileItem) {
-                            image->setImage(QImage());
-                        }
-                        break;
-                    }
+    for (int i = 0; i < files->count() && !idsToDelete.empty(); ++i) {
+        const auto j = reverseFileOrder ? files->count() - i - 1 : i;
+        auto* item = files->item(j);
+        if (item->textColor().rgb() != red.rgb()) {
+            const auto id = getImageId(item->text());
+            if (idsToDelete.find(id) != idsToDelete.end()) {
+                item->setTextColor(Qt::red);
+                if (item == currentImageFileItem) {
+                    image->setImage(QImage());
                 }
+                idsToDelete.erase(id);
             }
         }
     }
