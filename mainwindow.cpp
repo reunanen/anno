@@ -22,6 +22,7 @@
 #include <QInputDialog>
 #include <QColorDialog>
 #include <QProgressDialog>
+#include <QProgressBar>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QMessageBox>
@@ -32,6 +33,7 @@
 #include <QKeyEvent>
 #include <QtUiTools>
 #include <assert.h>
+#include <chrono>
 
 namespace {
     const char* companyName = "Tomaattinen";
@@ -524,21 +526,42 @@ void MainWindow::openFolder(const QString& dir)
 
     QStringList imageFiles;
 
+    QProgressDialog progress1(tr("Locating image files..."), tr("Stop"), 0, 1, this);
+    progress1.setMinimumDuration(100);
+    progress1.setWindowModality(Qt::WindowModal);
+
+    // For this progress, we don't really know the maximum, so let's not show the bar at all
+    QProgressBar progressBar;
+    progressBar.setVisible(false);
+    progress1.setBar(&progressBar);
+
+    std::chrono::steady_clock::time_point timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
+
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png", QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
+    while (it.hasNext() && !progress1.wasCanceled()) {
         const QString filename = it.next();
         const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
         const auto isInferenceResultFilename = [&]() { return filename.right(inferenceResultFilenameSuffix.length()) == inferenceResultFilenameSuffix; };
         if (!isMaskFilename() && !isInferenceResultFilename()) {
             imageFiles.push_back(filename);
         }
+        const auto now = std::chrono::steady_clock::now();
+        if (now - timeWhenLabelTextLastUpdated >= std::chrono::milliseconds(100)) {
+            progress1.setLabelText(tr("Locating image files... (%1 found so far)").arg(imageFiles.count()));
+            progress1.setValue(0);
+            QApplication::processEvents(); // update the dialog
+            timeWhenLabelTextLastUpdated = now;
+        }
     }
 
-    QProgressDialog progress(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()), tr("Stop"), 0, imageFiles.count() + 1, this);
-    progress.setWindowModality(Qt::WindowModal);
+    progress1.setValue(1);
 
-    for (int i = 0; i < imageFiles.count() && !progress.wasCanceled(); ++i) {
-        progress.setValue(i);
+    QProgressDialog progress2(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()), tr("Stop"), 0, imageFiles.count() + 1, this);
+    progress2.setWindowModality(Qt::WindowModal);
+    progress2.setMinimumDuration(100);
+
+    for (int i = 0; i < imageFiles.count() && !progress2.wasCanceled(); ++i) {
+        progress2.setValue(i);
         const QString filename = imageFiles[i];
         const QString displayName = filename.mid(dir.length() + 1);
         QListWidgetItem* item = new QListWidgetItem(displayName, files);
@@ -555,8 +578,8 @@ void MainWindow::openFolder(const QString& dir)
         item->setData(fullnameRole, filename);
     }
 
-    if (!progress.wasCanceled()) {
-        progress.setValue(imageFiles.count());
+    if (!progress2.wasCanceled()) {
+        progress2.setValue(imageFiles.count());
     }
 
     files->sortItems(reverseFileOrder ? Qt::DescendingOrder : Qt::AscendingOrder);
@@ -583,7 +606,7 @@ void MainWindow::openFolder(const QString& dir)
         conditionallyChangeFirstClass(ignoreClassLabel, ignoreColor, cleanClassLabel, cleanColor);
     }
 
-    progress.setValue(progress.maximum());
+    progress2.setValue(progress2.maximum());
 }
 
 void MainWindow::addRecentFolderMenuItem(const QString& dir)
