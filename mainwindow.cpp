@@ -546,6 +546,8 @@ void MainWindow::openFolder(const QString& dir)
 
     files->setUpdatesEnabled(false);
 
+    openingFolder = true;
+
     files->clear();
     idToIndex.clear();
     currentImageFileItem = nullptr;
@@ -594,13 +596,6 @@ void MainWindow::openFolder(const QString& dir)
             QApplication::processEvents(); // update the dialog
             timeWhenLabelTextLastUpdated = now;
         }
-    }
-
-    while (!imageFiles.empty() && !QFileInfo::exists(imageFiles.first())) {
-        imageFiles.pop_front();
-    }
-    while (!imageFiles.empty() && !QFileInfo::exists(imageFiles.last())) {
-        imageFiles.pop_back();
     }
 
     if (progress.wasCanceled()) {
@@ -672,6 +667,8 @@ void MainWindow::openFolder(const QString& dir)
     else {
         conditionallyChangeFirstClass(ignoreClassLabel, ignoreColor, cleanClassLabel, cleanColor);
     }
+
+    openingFolder = false;
 
     QTimer::singleShot(1000, this, SLOT(onIdle()));
 }
@@ -2077,25 +2074,27 @@ void MainWindow::onIdle()
         }
     }
 
-    slaim::Message msg;
+    if (!openingFolder) {
+        slaim::Message msg;
 
-    while (postOffice.Receive(msg, 0.0)) {
-        if (msg.GetType() == "ImageDeleted") {
-            claim::AttributeMessage amsg(msg);
-            const std::string& id = amsg.m_attributes["id"];
-            const auto i = idToIndex.find(id);
-            if (i != idToIndex.end()) {
-                const auto index = i->second;
-                auto* item = files->item(index);
-                const auto id2 = getImageId(item->text());
-                if (id2 != id) {
-                    const std::string error = id2 + " != " + id;
-                    QMessageBox::critical(this, "Unexpected id", error.c_str());
-                    break;
-                }
-                item->setTextColor(Qt::red);
-                if (item == currentImageFileItem) {
-                    image->setImage(QImage());
+        while (postOffice.Receive(msg, 0.0)) {
+            if (msg.GetType() == "ImageDeleted") {
+                claim::AttributeMessage amsg(msg);
+                const std::string& id = amsg.m_attributes["id"];
+                const auto i = idToIndex.find(id);
+                if (i != idToIndex.end()) {
+                    const auto index = i->second;
+                    auto* item = files->item(index);
+                    const auto id2 = getImageId(item->text());
+                    if (id2 != id) {
+                        const std::string error = id2 + " != " + id;
+                        QMessageBox::critical(this, "Unexpected id", error.c_str());
+                        break;
+                    }
+                    item->setTextColor(Qt::red);
+                    if (item == currentImageFileItem) {
+                        image->setImage(QImage());
+                    }
                 }
             }
         }

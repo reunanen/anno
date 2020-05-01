@@ -197,6 +197,7 @@ private:
     claim::PostOffice postOffice;
 
     std::unordered_map<std::string, int> idToIndex;
+    bool openingFolder = false;
 };
 
 #endif // MAINWINDOW_H
