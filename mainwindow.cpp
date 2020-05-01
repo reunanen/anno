@@ -540,7 +540,6 @@ void MainWindow::openFolder(const QString& dir)
     QProgressDialog progress1(tr("Locating image files..."), tr("Stop"), 0, 0, this);
     progress1.setMinimumDuration(200);
     progress1.setWindowModality(Qt::WindowModal);
-    progress1.show();
 
     auto timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
 
@@ -565,6 +564,9 @@ void MainWindow::openFolder(const QString& dir)
         const auto now = std::chrono::steady_clock::now();
         if (now - timeWhenLabelTextLastUpdated >= std::chrono::milliseconds(200)) {
             progress1.setLabelText(tr("Locating image files: %1 found so far").arg(imageFiles.count()) + "\n\n" + filename);
+            if (progress1.isHidden()) {
+                progress1.show();
+            }
             QApplication::processEvents(); // update the dialog
             timeWhenLabelTextLastUpdated = now;
         }
