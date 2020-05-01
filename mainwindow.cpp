@@ -22,7 +22,6 @@
 #include <QInputDialog>
 #include <QColorDialog>
 #include <QProgressDialog>
-#include <QProgressBar>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QMessageBox>
