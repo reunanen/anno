@@ -561,9 +561,9 @@ void MainWindow::openFolder(const QString& dir)
 
     QStringList imageFiles;
 
-    QProgressDialog progress1(tr("Locating image files..."), tr("Stop"), 0, 0, this);
-    progress1.setMinimumDuration(200);
-    progress1.setWindowModality(Qt::WindowModal);
+    QProgressDialog progress(tr("Locating image files..."), tr("Stop"), 0, 0, this);
+    progress.setMinimumDuration(200);
+    progress.setWindowModality(Qt::WindowModal);
 
     auto timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
 
@@ -571,7 +571,7 @@ void MainWindow::openFolder(const QString& dir)
     std::unordered_set<QString> maskFilenames;
 
     QDirIterator it(dir, QStringList() << "*.jpg" << "*.jpeg" << "*.png" << ("*" + thingAnnotationsFilenameSuffix), QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext() && !progress1.wasCanceled()) {
+    while (it.hasNext() && !progress.wasCanceled()) {
         const QString filename = it.next();
         const auto isThingsModeAnnotationFilename = [&]() { return filename.right(thingAnnotationsFilenameSuffix.length()) == thingAnnotationsFilenameSuffix; };
         const auto isMaskFilename = [&]() { return filename.right(maskFilenameSuffix.length()) == maskFilenameSuffix; };
@@ -587,9 +587,9 @@ void MainWindow::openFolder(const QString& dir)
         }
         const auto now = std::chrono::steady_clock::now();
         if (now - timeWhenLabelTextLastUpdated >= std::chrono::milliseconds(200)) {
-            progress1.setLabelText(tr("Locating image files: %1 found so far").arg(imageFiles.count()) + "\n\n" + filename);
-            if (progress1.isHidden()) {
-                progress1.show();
+            progress.setLabelText(tr("Locating image files: %1 found so far").arg(imageFiles.count()) + "\n\n" + filename);
+            if (progress.isHidden()) {
+                progress.show();
             }
             QApplication::processEvents(); // update the dialog
             timeWhenLabelTextLastUpdated = now;
@@ -603,7 +603,15 @@ void MainWindow::openFolder(const QString& dir)
         imageFiles.pop_back();
     }
 
-    progress1.setLabelText(tr("Sorting %1 file names...").arg(imageFiles.count()));
+    if (progress.wasCanceled()) {
+        progress.reset();
+    }
+
+    if (progress.isHidden() && imageFiles.count() >= 100000) {
+        progress.show();
+    }
+
+    progress.setLabelText(tr("Sorting %1 file names...").arg(imageFiles.count()));
     QApplication::processEvents(); // update the dialog
 
     if (reverseFileOrder) {
@@ -613,18 +621,15 @@ void MainWindow::openFolder(const QString& dir)
         qSort(imageFiles.begin(), imageFiles.end(), qLess<QString>());
     }
 
-    progress1.close();
-
-    QProgressDialog progress2(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()), tr("Stop"), 0, imageFiles.count() + 1, this);
-    progress2.setWindowModality(Qt::WindowModal);
-    progress2.setMinimumDuration(1000);
+    progress.setLabelText(tr("Populating the image file list (%1 files)").arg(imageFiles.count()));
+    progress.setMaximum(imageFiles.count() + 1);
 
     auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
-    for (int i = 0; i < imageFiles.count() && !progress2.wasCanceled(); ++i) {
+    for (int i = 0; i < imageFiles.count() && !progress.wasCanceled(); ++i) {
         const auto now = std::chrono::steady_clock::now();
-        if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(1000)) {
-            progress2.setValue(i);
+        if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(500)) {
+            progress.setValue(i);
             timeWhenProgressLastUpdated = now;
         }
         const QString filename = imageFiles[i];
@@ -642,8 +647,8 @@ void MainWindow::openFolder(const QString& dir)
         idToIndex[getImageId(filename)] = files->count() - 1;
     }
 
-    if (!progress2.wasCanceled()) {
-        progress2.setValue(imageFiles.count());
+    if (!progress.wasCanceled() && !progress.isHidden()) {
+        progress.setValue(imageFiles.count());
     }
 
     files->setUpdatesEnabled(true);
@@ -667,8 +672,6 @@ void MainWindow::openFolder(const QString& dir)
     else {
         conditionallyChangeFirstClass(ignoreClassLabel, ignoreColor, cleanClassLabel, cleanColor);
     }
-
-    progress2.setValue(progress2.maximum());
 
     QTimer::singleShot(1000, this, SLOT(onIdle()));
 }
