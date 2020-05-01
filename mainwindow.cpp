@@ -576,7 +576,7 @@ void MainWindow::openFolder(const QString& dir)
         progress.reset();
     }
 
-    if (progress.isHidden() && imageFiles.count() >= 10000) {
+    if (progress.isHidden() && imageFiles.count() >= 100000) {
         progress.show();
     }
 
@@ -590,14 +590,14 @@ void MainWindow::openFolder(const QString& dir)
         qSort(imageFiles.begin(), imageFiles.end(), qLess<QString>());
     }
 
-    progress.setLabelText(tr("Populating the image file list... (%1 files)").arg(imageFiles.count()));
+    progress.setLabelText(tr("Populating the image file list (%1 files)").arg(imageFiles.count()));
     progress.setMaximum(imageFiles.count() + 1);
 
     auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
     for (int i = 0; i < imageFiles.count() && !progress.wasCanceled(); ++i) {
         const auto now = std::chrono::steady_clock::now();
-        if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(1000)) {
+        if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(500)) {
             progress.setValue(i);
             timeWhenProgressLastUpdated = now;
         }
@@ -615,7 +615,7 @@ void MainWindow::openFolder(const QString& dir)
         item->setData(fullnameRole, filename);
     }
 
-    if (!progress.wasCanceled()) {
+    if (!progress.wasCanceled() && !progress.isHidden()) {
         progress.setValue(imageFiles.count());
     }
 
