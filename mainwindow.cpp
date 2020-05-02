@@ -1901,8 +1901,22 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                     };
 
                     const auto removeImageFromList = [row, this]() {
+                        QApplication::setOverrideCursor(Qt::WaitCursor);
                         QListWidgetItem* item = files->takeItem(row);
                         delete item;
+                        // Update all indexes after this one
+                        for (auto i = idToIndex.begin(), end = idToIndex.end(); i != end; ) {
+                            if (i->second == row) {
+                                i = idToIndex.erase(i);
+                            }
+                            else {
+                                if (i->second > row) {
+                                    --i->second;
+                                }
+                                ++i;
+                            }
+                        }
+                        QApplication::restoreOverrideCursor();
                         loadFile(files->item(files->currentRow()));
                     };
 
