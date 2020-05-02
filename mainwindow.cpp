@@ -1729,6 +1729,10 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
             if (currentItem) {
                 files->scrollToItem(currentItem, QListWidget::EnsureVisible);
             }
+            for (int i = 0, end = files->count(); i < end; ++i) {
+                const QString filename = files->item(i)->data(fullnameRole).toString();
+                idToIndex[getImageId(filename)] = i;
+            }
             QApplication::restoreOverrideCursor();
         }
     }
