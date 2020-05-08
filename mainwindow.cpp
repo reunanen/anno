@@ -730,38 +730,157 @@ void MainWindow::onExport()
                                  QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot,
                                  QDirIterator::Subdirectories);
 
+        bool deleteExistingFiles = false;
+
         if (dirIterator.hasNext()) {
             auto reply = QMessageBox::question(this,
                                                tr("Directory not empty"),
-                                               tr("Directory %1 is not empty!\n\nProceed anyway?").arg(dir),
-                                               QMessageBox::Yes | QMessageBox::No);
-            if (reply != QMessageBox::Yes) {
-                return;
+                                               tr("Directory %1 is not empty!\n\nDelete existing files first?").arg(dir),
+                                               QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                                               QMessageBox::Cancel);
+            if (reply == QMessageBox::Yes) {
+                deleteExistingFiles = true;
+            }
+            else if (reply == QMessageBox::No) {
+                ;
+            }
+            else {
+                return; // canceled
             }
         }
 
         QApplication::setOverrideCursor(Qt::WaitCursor);
 
         std::deque<std::pair<QString, QString>> imagesWithAnnotations;
+        std::deque<std::pair<QString, QString>> imagesWithoutAnnotations;
 
         const int total = files->count();
         for (int row = 0; row < total; ++row) {
             const auto* item = files->item(row);
-            if (item->textColor() == Qt::black) {
-                imagesWithAnnotations.push_back(std::make_pair(
-                    item->text(),
-                    item->data(fullnameRole).toString())
-                );
-            }
+            auto& destination = item->textColor() == Qt::black
+                ? imagesWithAnnotations
+                : imagesWithoutAnnotations;
+
+            destination.push_back(std::make_pair(
+                item->text(),
+                item->data(fullnameRole).toString())
+            );
         }
 
         QApplication::restoreOverrideCursor();
 
-        const int count = static_cast<int>(imagesWithAnnotations.size());
-
-        QProgressDialog progress(tr("Exporting %1 images to %2 ...").arg(QString::number(count), dir), "Cancel", 0, count, this);
-
+        QProgressDialog progress(tr(""), tr("Stop"), 0, 0, this);
+        progress.setMinimumDuration(200);
         progress.setWindowModality(Qt::WindowModal);
+
+        if (!imagesWithoutAnnotations.empty()) {
+            const int defaultValue = static_cast<int>(
+                imagesWithAnnotations.empty()
+                ? imagesWithoutAnnotations.size()
+                : std::min(imagesWithAnnotations.size(), imagesWithoutAnnotations.size())
+            );
+            int value = std::min(settings.value("defaultUnannotatedExportCount", QVariant(defaultValue)).toInt(), static_cast<int>(imagesWithoutAnnotations.size()));
+            bool ok = false;
+            value = QInputDialog::getInt(this,
+                                         tr("Copy even some unannotated images?"),
+                                         tr("While we are at it, we can copy some of the %1 unannotated images as well.\n\nHow many should we copy?").arg(imagesWithoutAnnotations.size()),
+                                         value,
+                                         0,
+                                         static_cast<int>(imagesWithoutAnnotations.size()),
+                                         1,
+                                         &ok);
+             if (!ok) {
+                 return;
+             }
+
+             settings.setValue("defaultUnannotatedExportCount", value);
+
+             if (value == 0) {
+                 imagesWithoutAnnotations.clear();
+             }
+             else if (value == static_cast<int>(imagesWithoutAnnotations.size())) {
+                 ; // nothing to do!
+             }
+             else {
+                 std::deque<std::pair<QString, QString>> remaining;
+                 std::swap(remaining, imagesWithoutAnnotations);
+
+                 progress.setLabelText(tr("Choosing unannotated images to export..."));
+                 progress.setMinimum(0);
+                 progress.setMaximum(value);
+                 progress.setValue(static_cast<int>(imagesWithoutAnnotations.size()));
+                 while (imagesWithoutAnnotations.size() < value && !progress.wasCanceled()) {
+                     const int index = rand() % remaining.size();
+                     const auto i = remaining.begin() + index;
+                     imagesWithoutAnnotations.push_back(*i);
+                     remaining.erase(i);
+                     progress.setValue(static_cast<int>(imagesWithoutAnnotations.size()));
+                 }
+
+                 if (progress.wasCanceled()) {
+                     progress.reset();
+                 }
+             }
+        }
+
+        const int count = static_cast<int>(imagesWithAnnotations.size() + imagesWithoutAnnotations.size());
+
+        if (deleteExistingFiles) {
+            progress.setLabelText(tr("Deleting items..."));
+            progress.setMinimum(0);
+            progress.setMaximum(0);
+            progress.setValue(0);
+
+            std::deque<QString> directories;
+            auto timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
+            size_t deleteCounter = 0;
+
+            const auto maybeUpdateLabelText = [&](const QString& filename) {
+                const auto now = std::chrono::steady_clock::now();
+                if (now - timeWhenLabelTextLastUpdated >= std::chrono::milliseconds(200)) {
+                    progress.setLabelText(tr("Deleted %1 items found so far").arg(++deleteCounter) + "\n\n" + filename);
+                    if (progress.isHidden()) {
+                        progress.show();
+                    }
+                    QApplication::processEvents(); // update the dialog
+                    timeWhenLabelTextLastUpdated = now;
+                }
+            };
+
+            while (dirIterator.hasNext() && !progress.wasCanceled()) {
+                QString filename = dirIterator.next();
+                QFileInfo fileinfo(filename);
+                if (fileinfo.isDir()) {
+                    directories.push_back(filename);
+                }
+                else if (fileinfo.isFile()) {
+                    QFile().remove(filename);
+                    ++deleteCounter;
+                }
+                maybeUpdateLabelText(filename);
+            }
+
+            while (!directories.empty() && !progress.wasCanceled()) {
+                QString dirname = directories.back();
+                QDir().rmdir(dirname);
+                ++deleteCounter;
+                maybeUpdateLabelText(dirname);
+                directories.pop_back();
+            }
+
+            if (progress.wasCanceled()) {
+                progress.reset();
+            }
+        }
+
+        if (progress.isHidden() && count >= 1000) {
+            progress.show();
+        }
+
+        progress.setLabelText(tr("Exporting %1 images to %2 ...").arg(QString::number(count), dir));
+        progress.setMinimum(0);
+        progress.setMaximum(count);
+        progress.setValue(0);
 
         size_t fileCount = 0;
 
@@ -774,9 +893,15 @@ void MainWindow::onExport()
 
             std::deque<std::pair<QString, QString>> allSourceFilesForThisImage;
 
-            allSourceFilesForThisImage.push_back(imagesWithAnnotations[i]);
+            const bool isAnnotatedImage = i < imagesWithAnnotations.size();
 
-            {
+            const auto fileItem = isAnnotatedImage
+                ? imagesWithAnnotations[i]
+                : imagesWithoutAnnotations[i - imagesWithAnnotations.size()];
+
+            allSourceFilesForThisImage.push_back(fileItem);
+
+            if (isAnnotatedImage) {
                 const auto maskFilename = getMaskFilename(imagesWithAnnotations[i].second);
                 if (QFile().exists(maskFilename)) {
                     allSourceFilesForThisImage.push_back(std::make_pair(
@@ -786,7 +911,7 @@ void MainWindow::onExport()
                 }
             }
 
-            {
+            if (isAnnotatedImage) {
                 const auto thingAnnotationsPathFilename = getThingAnnotationsPathFilename(imagesWithAnnotations[i].second);
                 if (QFile().exists(thingAnnotationsPathFilename)) {
                     allSourceFilesForThisImage.push_back(std::make_pair(
