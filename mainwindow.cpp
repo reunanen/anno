@@ -37,6 +37,7 @@
 #include <assert.h>
 #include <chrono>
 #include <unordered_set>
+#include <memory> // std::unique_ptr
 
 namespace {
     const char* companyName = "Tomaattinen";
@@ -800,10 +801,15 @@ void MainWindow::onExport()
 
         QApplication::restoreOverrideCursor();
 
-        QProgressDialog progress(tr(""), tr("Stop"), 0, 0, this);
-        progress.setMinimumDuration(200);
-        progress.setWindowModality(Qt::WindowModal);
-        progress.hide();
+        std::unique_ptr<QProgressDialog> progress;
+
+        const auto createProgressDialogIfNeeded = [&progress, this]() {
+            if (!progress) {
+                progress = std::make_unique<QProgressDialog>(tr(""), tr("Stop"), 0, 0, this);
+                progress->setMinimumDuration(200);
+                progress->setWindowModality(Qt::WindowModal);
+            }
+        };
 
         if (!imagesWithoutAnnotations.empty()) {
             const int defaultValue = static_cast<int>(
@@ -837,22 +843,22 @@ void MainWindow::onExport()
                  std::deque<std::pair<QString, QString>> remaining;
                  std::swap(remaining, imagesWithoutAnnotations);
 
-                 progress.setLabelText(tr("Choosing unannotated images to export..."));
-                 progress.setMinimum(0);
-                 progress.setMaximum(value);
-                 progress.setValue(static_cast<int>(imagesWithoutAnnotations.size()));
-                 progress.show();
+                 createProgressDialogIfNeeded();
+                 progress->setLabelText(tr("Choosing unannotated images to export..."));
+                 progress->setMinimum(0);
+                 progress->setMaximum(value);
+                 progress->setValue(static_cast<int>(imagesWithoutAnnotations.size()));
 
-                 while (imagesWithoutAnnotations.size() < value && !progress.wasCanceled()) {
+                 while (imagesWithoutAnnotations.size() < value && !progress->wasCanceled()) {
                      const int index = rand() % remaining.size();
                      const auto i = remaining.begin() + index;
                      imagesWithoutAnnotations.push_back(*i);
                      remaining.erase(i);
-                     progress.setValue(static_cast<int>(imagesWithoutAnnotations.size()));
+                     progress->setValue(static_cast<int>(imagesWithoutAnnotations.size()));
                  }
 
-                 if (progress.wasCanceled()) {
-                     progress.reset();
+                 if (progress->wasCanceled()) {
+                     progress->reset();
                  }
              }
         }
@@ -860,11 +866,11 @@ void MainWindow::onExport()
         const int count = static_cast<int>(imagesWithAnnotations.size() + imagesWithoutAnnotations.size());
 
         if (deleteExistingFiles) {
-            progress.setLabelText(tr("Deleting items..."));
-            progress.setMinimum(0);
-            progress.setMaximum(0);
-            progress.setValue(0);
-            progress.show();
+            createProgressDialogIfNeeded();
+            progress->setLabelText(tr("Deleting items..."));
+            progress->setMinimum(0);
+            progress->setMaximum(0);
+            progress->setValue(0);
 
             std::deque<QString> directories;
             auto timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
@@ -873,16 +879,16 @@ void MainWindow::onExport()
             const auto maybeUpdateLabelText = [&](const QString& filename) {
                 const auto now = std::chrono::steady_clock::now();
                 if (now - timeWhenLabelTextLastUpdated >= std::chrono::milliseconds(200)) {
-                    progress.setLabelText(tr("Deleted %1 items found so far").arg(++deleteCounter) + "\n\n" + filename);
-                    if (progress.isHidden()) {
-                        progress.show();
+                    progress->setLabelText(tr("Deleted %1 items found so far").arg(++deleteCounter) + "\n\n" + filename);
+                    if (progress->isHidden()) {
+                        progress->show();
                     }
                     QApplication::processEvents(); // update the dialog
                     timeWhenLabelTextLastUpdated = now;
                 }
             };
 
-            while (dirIterator.hasNext() && !progress.wasCanceled()) {
+            while (dirIterator.hasNext() && !progress->wasCanceled()) {
                 QString filename = dirIterator.next();
                 QFileInfo fileinfo(filename);
                 if (fileinfo.isDir()) {
@@ -895,7 +901,7 @@ void MainWindow::onExport()
                 maybeUpdateLabelText(filename);
             }
 
-            while (!directories.empty() && !progress.wasCanceled()) {
+            while (!directories.empty() && !progress->wasCanceled()) {
                 QString dirname = directories.back();
                 QDir().rmdir(dirname);
                 ++deleteCounter;
@@ -903,23 +909,23 @@ void MainWindow::onExport()
                 directories.pop_back();
             }
 
-            if (progress.wasCanceled()) {
-                progress.reset();
+            if (progress->wasCanceled()) {
+                progress->reset();
             }
         }
 
-        progress.setLabelText(tr("Exporting %1 images to %2 ...").arg(QString::number(count), dir));
-        progress.setMinimum(0);
-        progress.setMaximum(count);
-        progress.setValue(0);
-        progress.show();
+        createProgressDialogIfNeeded();
+        progress->setLabelText(tr("Exporting %1 images to %2 ...").arg(QString::number(count), dir));
+        progress->setMinimum(0);
+        progress->setMaximum(count);
+        progress->setValue(0);
 
         size_t fileCount = 0;
 
         for (int i = 0; i < count; i++) {
-            progress.setValue(i);
+            progress->setValue(i);
 
-            if (progress.wasCanceled()) {
+            if (progress->wasCanceled()) {
                 break;
             }
 
@@ -977,7 +983,7 @@ void MainWindow::onExport()
 
                     if (!QDir().exists(destinationDir)) {
                         if (!QDir().mkpath(destinationDir)) {
-                            progress.setValue(count);
+                            progress->setValue(count);
                             QMessageBox::critical(this, "Error creating directory", tr("Unable to create destination directory %1").arg(destinationDir));
                             return;
                         }
@@ -986,14 +992,14 @@ void MainWindow::onExport()
 
                 if (QFile().exists(destination)) {
                     if (!QFile().remove(destination)) {
-                        progress.setValue(count);
+                        progress->setValue(count);
                         QMessageBox::critical(this, "Error removing existing file", tr("Error removing existing file %1").arg(destination));
                         return;
                     }
                 }
 
                 if (!QFile().copy(sourceFull, destination)) {
-                    progress.setValue(count);
+                    progress->setValue(count);
                     QMessageBox::critical(this, "Error copying file", tr("Error copying file %1 to %2").arg(sourceFull, destinationDir));
                     return;
                 }
@@ -1002,8 +1008,8 @@ void MainWindow::onExport()
             }
         }
 
-        if (!progress.wasCanceled()) {
-            progress.setValue(count);
+        if (!progress->wasCanceled()) {
+            progress->setValue(count);
             QMessageBox::information(this,
                                      tr("Export complete"),
                                      tr("Exported %1 images (%2 files) to %3").arg(QString::number(count),
