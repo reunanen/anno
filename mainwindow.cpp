@@ -803,6 +803,7 @@ void MainWindow::onExport()
         QProgressDialog progress(tr(""), tr("Stop"), 0, 0, this);
         progress.setMinimumDuration(200);
         progress.setWindowModality(Qt::WindowModal);
+        progress.hide();
 
         if (!imagesWithoutAnnotations.empty()) {
             const int defaultValue = static_cast<int>(
@@ -840,6 +841,8 @@ void MainWindow::onExport()
                  progress.setMinimum(0);
                  progress.setMaximum(value);
                  progress.setValue(static_cast<int>(imagesWithoutAnnotations.size()));
+                 progress.show();
+
                  while (imagesWithoutAnnotations.size() < value && !progress.wasCanceled()) {
                      const int index = rand() % remaining.size();
                      const auto i = remaining.begin() + index;
@@ -861,6 +864,7 @@ void MainWindow::onExport()
             progress.setMinimum(0);
             progress.setMaximum(0);
             progress.setValue(0);
+            progress.show();
 
             std::deque<QString> directories;
             auto timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
@@ -904,14 +908,11 @@ void MainWindow::onExport()
             }
         }
 
-        if (progress.isHidden() && count >= 1000) {
-            progress.show();
-        }
-
         progress.setLabelText(tr("Exporting %1 images to %2 ...").arg(QString::number(count), dir));
         progress.setMinimum(0);
         progress.setMaximum(count);
         progress.setValue(0);
+        progress.show();
 
         size_t fileCount = 0;
 
