@@ -1035,7 +1035,8 @@ MainWindow::InferenceResults MainWindow::readResultsJSON(const QString& filename
         result.pen = QPen(QColor(
             color.value("r").toInt(),
             color.value("g").toInt(),
-            color.value("b").toInt()
+            color.value("b").toInt(),
+            color.value("a").toInt()
         ));
 
         const QJsonArray paths = colorAndPaths.value("color_paths").toArray();
