@@ -2184,6 +2184,11 @@ void MainWindow::onHideUnannotatedFilesToggled(bool toggled)
         }
     }
 
+    auto* currentItem = files->currentItem();
+    if (currentItem) {
+        files->scrollToItem(currentItem, QListWidget::EnsureVisible);
+    }
+
     files->setUpdatesEnabled(true);
 
     QApplication::restoreOverrideCursor();
