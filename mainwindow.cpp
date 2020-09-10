@@ -209,11 +209,21 @@ void MainWindow::createFileList()
     fileListDockWidget->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable); // no close button
     fileListDockWidget->setObjectName("Files");
 
+    QWidget* widget = new QWidget(this);
+    fileListDockWidget->setWidget(widget);
+    addDockWidget(Qt::LeftDockWidgetArea, fileListDockWidget);
+
+    QVBoxLayout* layout = new QVBoxLayout(widget);
+    layout->setSpacing(0);
+    layout->setMargin(1);
+
+    hideUnannotatedFiles = new QCheckBox(tr("Hide unannotated"), this);
+    layout->addWidget(hideUnannotatedFiles);
+
     files = new QListWidget(this);
     files->setUniformItemSizes(true);
 
-    fileListDockWidget->setWidget(files);
-    addDockWidget(Qt::LeftDockWidgetArea, fileListDockWidget);
+    layout->addWidget(files);
 
     files->setFont(QFont("Arial", 8, 0));
 
@@ -225,6 +235,8 @@ void MainWindow::createFileList()
 
     connect(files, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onFileClicked(QListWidgetItem*)));
     connect(files, SIGNAL(activated(const QModelIndex&)), this, SLOT(onFileActivated(const QModelIndex&)));
+
+    connect(hideUnannotatedFiles, SIGNAL(toggled(bool)), this, SLOT(onHideUnannotatedFilesToggled(bool)));
 }
 
 void MainWindow::createToolList()
@@ -2157,6 +2169,24 @@ void MainWindow::onAnnotationsVisible(bool visible)
     disconnect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
     markingsVisible->setChecked(visible);
     connect(markingsVisible, SIGNAL(toggled(bool)), this, SLOT(onMarkingsVisible(bool)));
+}
+
+void MainWindow::onHideUnannotatedFilesToggled(bool toggled)
+{
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    files->setUpdatesEnabled(false);
+
+    for (int i = 0, end = files->count(); i < end; ++i) {
+        QListWidgetItem* file = files->item(i);
+        if (file->textColor() == Qt::gray) {
+            file->setHidden(toggled);
+        }
+    }
+
+    files->setUpdatesEnabled(true);
+
+    QApplication::restoreOverrideCursor();
 }
 
 void MainWindow::onRestoreDefaultWindowPositions()

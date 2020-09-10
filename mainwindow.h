@@ -64,6 +64,7 @@ private slots:
     void onRedo();
     void onNewMarkingRadius(int newMarkingRadius);
     void onAnnotationsVisible(bool visible);
+    void onHideUnannotatedFilesToggled(bool toggled);
     void onRestoreDefaultWindowPositions();
     void onAbout();
 
@@ -114,6 +115,7 @@ private:
     InferenceResults readResultsJSON(const QString& filename);
 
     Ui::MainWindow* ui;
+    QCheckBox* hideUnannotatedFiles = nullptr;
     QListWidget* files = nullptr;
     QResultImageView* image = nullptr;
 
