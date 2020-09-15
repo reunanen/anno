@@ -1815,6 +1815,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     }
     else if (key == Qt::Key_Escape || key == Qt::Key_P) {
         panButton->setChecked(true);
+        rightMouseResetViewButton->setChecked(true);
     }
     else if (key == Qt::Key_A) {
         annotateButton->setChecked(true);
