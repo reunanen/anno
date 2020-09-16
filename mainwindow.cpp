@@ -605,6 +605,8 @@ void MainWindow::openFolder(const QString& dir)
     progress.setLabelText(tr("Populating the image file list (%1 files)").arg(imageFiles.count()));
     progress.setMaximum(imageFiles.count() + 1);
 
+    const bool hideUnannotated = hideUnannotatedFiles->isChecked();
+
     auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
     for (int i = 0; i < imageFiles.count() && !progress.wasCanceled(); ++i) {
@@ -623,6 +625,10 @@ void MainWindow::openFolder(const QString& dir)
         }
         else {
             item->setTextColor(Qt::gray);
+
+            if (hideUnannotated) {
+                item->setHidden(true);
+            }
         }
         item->setData(fullnameRole, filename);
     }
