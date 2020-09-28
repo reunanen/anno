@@ -106,6 +106,8 @@ private:
     bool conditionallyChangeFirstClass(const QString& oldName, QColor oldColor, const QString& newName, QColor newColor);
     static void setClassItemColor(QListWidgetItem* listWidgetItem, QColor color);
 
+    bool hasInferenceResults(const QString& baseImageFilename) const;
+
     struct InferenceResults
     {
         std::vector<QResultImageView::Result> results;

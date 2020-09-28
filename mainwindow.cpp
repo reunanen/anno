@@ -624,7 +624,7 @@ void MainWindow::openFolder(const QString& dir)
             item->setTextColor(Qt::black);
         }
         else {
-            item->setTextColor(Qt::gray);
+            item->setTextColor(hasInferenceResults(filename) ? Qt::darkGray : Qt::lightGray);
 
             if (hideUnannotated) {
                 item->setHidden(true);
@@ -1023,6 +1023,16 @@ void MainWindow::onFileItemChanged(QListWidgetItem* current, QListWidgetItem* pr
     if (current) {
         loadFile(current);
     }
+}
+
+bool MainWindow::hasInferenceResults(const QString& baseImageFilename) const
+{
+    QFile file;
+    file.setFileName(getInferenceResultPathFilename(baseImageFilename));
+    if (!file.exists()) {
+        return false;
+    }
+    return file.size() > 2;
 }
 
 MainWindow::InferenceResults MainWindow::readResultsJSON(const QString& filename)
@@ -1883,7 +1893,8 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                 const auto thingAnnotationsPathFilename = getThingAnnotationsPathFilename(filename);
 
                 const auto hasAnnotationFiles = [&]() {
-                    if (files->item(row)->textColor() == Qt::gray) {
+                    const auto textColor = files->item(row)->textColor();
+                    if (textColor == Qt::lightGray || textColor == Qt::darkGray) {
                         return false;
                     }
 
@@ -1895,7 +1906,8 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                     bool hasActualStuffAnnotations = false;
                     bool hasActualThingsAnnotations = false;
 
-                    if (files->item(row)->textColor() != Qt::gray) {
+                    const auto textColor = files->item(row)->textColor();
+                    if (textColor != Qt::lightGray && textColor != Qt::darkGray) {
                         QFuture<QImage> maskFuture;
 
                         if (QFile().exists(maskFilename)) {
@@ -1968,7 +1980,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                         };
 
                         if (deleteAnnotations()) {
-                            files->item(row)->setTextColor(Qt::gray);
+                            files->item(row)->setTextColor(hasInferenceResults(filename) ? Qt::darkGray : Qt::lightGray);
 
                             // Make file writable again
                             QFile file(filename);
@@ -2186,7 +2198,7 @@ void MainWindow::onHideUnannotatedFilesToggled(bool toggled)
 
     for (int i = 0, end = files->count(); i < end; ++i) {
         QListWidgetItem* file = files->item(i);
-        if (file->textColor() == Qt::gray) {
+        if (file->textColor() == Qt::lightGray || file->textColor() == Qt::darkGray) {
             file->setHidden(toggled);
         }
     }
