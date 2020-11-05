@@ -91,7 +91,7 @@ private:
     static QString getInferenceResultFilenameSuffix();
     static QString getInferenceResultPathFilename(const QString& baseImageFilename);
 
-    void addNewClass(const QString& className, QColor color);
+    QListWidgetItem* addNewClass(const QString& className, QColor color);
 
     void loadClassList();
     void saveClassList() const;

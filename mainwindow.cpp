@@ -1654,7 +1654,10 @@ void MainWindow::onAddClass()
                         }
                     }
 
-                    addNewClass(newClass, roundedColor);
+                    QListWidgetItem* newItem = addNewClass(newClass, roundedColor);
+
+                    onAnnotationClassClicked(newItem);
+
                     saveClassList();
                 }
             }
@@ -1753,7 +1756,7 @@ void MainWindow::onRemoveClass()
     QMessageBox::warning(this, tr("Error"), tr("No annotation class item found"));
 }
 
-void MainWindow::addNewClass(const QString& className, QColor color)
+QListWidgetItem* MainWindow::addNewClass(const QString& className, QColor color)
 {
     QStringList columns;
     columns.append(className);
@@ -1767,7 +1770,7 @@ void MainWindow::addNewClass(const QString& className, QColor color)
 
     annotationClassItems.push_back(classItem);
 
-    onAnnotationClassClicked(classItem.listWidgetItem);
+    return classItem.listWidgetItem;
 }
 
 void MainWindow::loadClassList()
