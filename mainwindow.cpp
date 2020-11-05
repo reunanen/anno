@@ -481,6 +481,20 @@ void MainWindow::createToolList()
     layout->addWidget(yardstickVisible);
 }
 
+QString getDirectory(const QFileDialog& dialog)
+{
+    const QLineEdit* dirLineEdit = dynamic_cast<QLineEdit*>(dialog.focusWidget());
+    if (dirLineEdit) {
+        const QString text = dirLineEdit->text();
+        if (QDir(text).exists()) {
+            // prefer the typed-in directory, if it looks good
+            return text;
+        }
+    }
+    // fall back to QFileDialog's default behaviour
+    return dialog.directory().path();
+}
+
 void MainWindow::onOpenFolder()
 {
     QSettings settings(companyName, applicationName);
@@ -499,7 +513,7 @@ void MainWindow::onOpenFolder()
     dialog.setNameFilter("(*.jpg *.jpeg *.png)");
 
     if (dialog.exec() == QDialog::Accepted) {
-        const QString dir = dialog.directory().path();
+        const QString dir = getDirectory(dialog);
         if (!dir.isEmpty()) {
             settings.setValue("defaultDirectory", dir);
             openFolder(dir);
