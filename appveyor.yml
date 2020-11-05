@@ -10,7 +10,9 @@ build_script:
   - echo namespace { const char* version = "%APPVEYOR_BUILD_VERSION%"; } > version.h
   - qmake anno.pro
   - nmake
+  - signtool sign /a release\anno.exe
   - makensis anno-installer.nsi
+  - signtool sign /a anno-installer-v%APPVEYOR_BUILD_VERSION%.exe
 artifacts:
   - path: anno-installer-v*.exe
     name: anno-installer
