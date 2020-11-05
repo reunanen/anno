@@ -520,6 +520,7 @@ void MainWindow::onOpenRecentFolder()
     }
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
 namespace std {
   template<> struct hash<QString> {
     std::size_t operator()(const QString& s) const {
@@ -527,6 +528,7 @@ namespace std {
     }
   };
 }
+#endif // QT_VERSION
 
 void MainWindow::openFolder(const QString& dir)
 {
