@@ -630,6 +630,12 @@ void MainWindow::openFolder(const QString& dir)
     progress.setLabelText(tr("Populating the image file list (%1 files)").arg(imageFiles.count()));
     progress.setMaximum(imageFiles.count() + 1);
 
+    QApplication::processEvents();
+
+    // taken from: https://stackoverflow.com/a/10808934/19254
+    progress.raise();          // for MacOS
+    progress.activateWindow(); // for Windows
+
     const bool hideUnannotated = hideUnannotatedFiles->isChecked();
 
     auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
