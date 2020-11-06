@@ -35,6 +35,7 @@
 #include <assert.h>
 #include <chrono>
 #include <unordered_set>
+#include <functional>
 #include <memory> // std::unique_ptr
 
 namespace {
@@ -618,27 +619,68 @@ void MainWindow::openFolder(const QString& dir)
     }
 
     progress.setLabelText(tr("Sorting %1 file names...").arg(imageFiles.count()));
+    progress.setValue(0);
+    progress.setMaximum(imageFiles.count() + 1);
     QApplication::processEvents(); // update the dialog
 
-    if (reverseFileOrder) {
-        qSort(imageFiles.begin(), imageFiles.end(), qGreater<QString>());
+    auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
+
+    const double imageFilesCountLog2 = log2(imageFiles.count());
+
+    uint64_t comparisonsDone = 0;
+
+    class SortingCanceled : std::exception {};
+
+    const auto updateSortingProgress = [&]() {
+        ++comparisonsDone;
+        const auto now = std::chrono::steady_clock::now();
+        if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(500)) {
+            const double progressEstimate = comparisonsDone / imageFilesCountLog2;
+            progress.setValue(std::min(static_cast<int>(std::round(progressEstimate)), imageFiles.count()));
+            timeWhenProgressLastUpdated = now;
+            QApplication::processEvents();
+
+            if (progress.wasCanceled()) {
+                throw SortingCanceled();
+            }
+        }
+    };
+
+    struct compare {
+        compare(bool reverseFileOrder, std::function<void()> updateSortingProgress)
+            : reverseFileOrder(reverseFileOrder)
+            , updateSortingProgress(updateSortingProgress)
+        {}
+
+        bool operator()(const QString& lhs, const QString& rhs) const {
+            updateSortingProgress();
+            return reverseFileOrder
+                ? greater(lhs, rhs)
+                : less   (lhs, rhs);
+        }
+
+    private:
+        const bool reverseFileOrder;
+        const std::function<void()> updateSortingProgress;
+        const std::greater<QString> greater;
+        const std::less   <QString> less;
+    };
+
+    try {
+        std::sort(imageFiles.begin(), imageFiles.end(), compare(reverseFileOrder, updateSortingProgress));
     }
-    else {
-        qSort(imageFiles.begin(), imageFiles.end(), qLess<QString>());
+    catch (SortingCanceled) {
+        ; // do nothing
     }
 
     progress.setLabelText(tr("Populating the image file list (%1 files)").arg(imageFiles.count()));
+    progress.setValue(0);
     progress.setMaximum(imageFiles.count() + 1);
-
     QApplication::processEvents();
-
-    // taken from: https://stackoverflow.com/a/10808934/19254
-    progress.raise();          // for MacOS
-    progress.activateWindow(); // for Windows
 
     const bool hideUnannotated = hideUnannotatedFiles->isChecked();
 
-    auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
+    timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
     for (int i = 0; i < imageFiles.count() && !progress.wasCanceled(); ++i) {
         const auto now = std::chrono::steady_clock::now();
