@@ -13,6 +13,7 @@ class QSpinBox;
 class QCheckBox;
 class QRadioButton;
 class QPushButton;
+class QProgressDialog;
 
 #include "QResultImageView/QResultImageView.h"
 #include <deque>
@@ -108,6 +109,8 @@ private:
 
     bool hasAnnotations(const QListWidgetItem* item) const;
     void updateTextColor(QListWidgetItem* item, const QString& baseImageFilename);
+
+    bool cleanFileList(QProgressDialog* progress);
 
     struct InferenceResults
     {

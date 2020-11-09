@@ -119,7 +119,22 @@ void MainWindow::closeEvent(QCloseEvent *event)
         settings.setValue("channelSelection", "alpha");
     }
 
-    QMainWindow::closeEvent(event);
+    if (files->count() > 0) {
+        QProgressDialog progress("", tr("Stop"), 0, 0, this);
+        progress.setWindowModality(Qt::WindowModal);
+        progress.setMinimumDuration(200);
+
+        files->setUpdatesEnabled(false);
+
+        if (cleanFileList(&progress)) {
+            QMainWindow::closeEvent(event);
+        }
+        else {
+            event->ignore();
+        }
+
+        files->setUpdatesEnabled(true);
+    }
 }
 
 void MainWindow::init()
@@ -557,13 +572,13 @@ void MainWindow::openFolder(const QString& dir)
 
     files->setUpdatesEnabled(false);
 
-    files->clear();
-    currentImageFileItem = nullptr;
+    QProgressDialog progress(tr("Cleaning up..."), tr("Stop"), 0, 0, this);
+    progress.setMinimumDuration(200);
+    progress.setWindowModality(Qt::WindowModal);
+
+    cleanFileList(&progress);
 
     resetUndoBuffers();
-
-    image->setImage(QImage());
-    image->resetZoomAndPan();
 
     const QString maskFilenameSuffix = getMaskFilenameSuffix();
     const QString thingAnnotationsFilenameSuffix = getThingAnnotationsPathFilenameSuffix();
@@ -571,9 +586,8 @@ void MainWindow::openFolder(const QString& dir)
 
     QStringList imageFiles;
 
-    QProgressDialog progress(tr("Locating image files..."), tr("Stop"), 0, 0, this);
-    progress.setMinimumDuration(200);
-    progress.setWindowModality(Qt::WindowModal);
+    progress.setMaximum(0);
+    progress.setValue(0);
 
     auto timeWhenLabelTextLastUpdated = std::chrono::steady_clock::now();
 
@@ -637,8 +651,8 @@ void MainWindow::openFolder(const QString& dir)
         if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(500)) {
             const double progressEstimate = comparisonsDone / imageFilesCountLog2;
             progress.setValue(std::min(static_cast<int>(std::round(progressEstimate)), imageFiles.count()));
-            timeWhenProgressLastUpdated = now;
             QApplication::processEvents();
+            timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
             if (progress.wasCanceled()) {
                 throw SortingCanceled();
@@ -695,13 +709,14 @@ void MainWindow::openFolder(const QString& dir)
 
     const auto dirLength = getDirLength();
 
-    for (int i = 0; i < imageFiles.count() && !progress.wasCanceled(); ++i) {
+    const int imageFilesCount = imageFiles.count();
+    for (int i = 0; i < imageFilesCount && !progress.wasCanceled(); ++i) {
         const auto now = std::chrono::steady_clock::now();
         if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(500)) {
             progress.setValue(i);
-            timeWhenProgressLastUpdated = now;
+            timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
         }
-        const QString filename = imageFiles[i];
+        const QString filename = imageFiles.takeFirst();
         const QString displayName = filename.mid(dirLength);
         QListWidgetItem* item = new QListWidgetItem(displayName, files);
         const auto maskFileExists = [&]() { return maskFilenames.find(getMaskFilename(filename)) != maskFilenames.end(); };
@@ -718,8 +733,30 @@ void MainWindow::openFolder(const QString& dir)
         item->setData(fullnameRole, filename);
     }
 
+    if (!imageFiles.isEmpty()) {
+        progress.setLabelText(tr("Cleaning up..."));
+        int removedCount = 0;
+        const int initialCount = imageFiles.count();
+        progress.setValue(0);
+        progress.show();
+        progress.setMaximum(initialCount);
+        progress.setCancelButton(nullptr);
+        progress.setWindowFlags(progress.windowFlags() & ~Qt::WindowCloseButtonHint);
+        while (removedCount < initialCount) {
+            imageFiles.takeLast();
+            const auto now = std::chrono::steady_clock::now();
+            if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(500)) {
+                progress.setValue(removedCount);
+                timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
+            }
+            ++removedCount;
+        }
+    }
+
+    assert(imageFiles.isEmpty());
+
     if (!progress.wasCanceled() && !progress.isHidden()) {
-        progress.setValue(imageFiles.count());
+        progress.setValue(imageFilesCount);
     }
 
     files->setUpdatesEnabled(true);
@@ -2309,6 +2346,37 @@ void MainWindow::onRestoreDefaultWindowPositions()
 {
     restoreGeometry(defaultGeometry);
     restoreState(defaultState);
+}
+
+bool MainWindow::cleanFileList(QProgressDialog* progress)
+{
+    files->setCurrentItem(nullptr);
+    currentImageFileItem = nullptr;
+
+    image->setImage(QImage());
+    image->resetZoomAndPan();
+
+    int removedCount = 0;
+    const int initialCount = files->count();
+    progress->setLabelText(tr("Cleaning up the file list..."));
+    progress->setMinimum(0);
+    progress->setMaximum(initialCount);
+    progress->setValue(0);
+
+    auto timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
+
+    while (removedCount < initialCount && !progress->wasCanceled()) {
+        QListWidgetItem* item = files->takeItem(initialCount - removedCount - 1);
+        delete item;
+        const auto now = std::chrono::steady_clock::now();
+        if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(200)) {
+            progress->setValue(removedCount);
+            timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
+        }
+        ++removedCount;
+    }
+
+    return !progress->wasCanceled();
 }
 
 void MainWindow::onAbout()
