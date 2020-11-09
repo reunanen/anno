@@ -682,6 +682,19 @@ void MainWindow::openFolder(const QString& dir)
 
     timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
+    const auto getDirLength = [&dir]() {
+        if (dir.isEmpty()) {
+            return 0;
+        }
+        const auto lastChar = dir[dir.length() - 1];
+        if (lastChar == '/' || lastChar == '\\') {
+            return dir.length();
+        }
+        return dir.length() + 1;
+    };
+
+    const auto dirLength = getDirLength();
+
     for (int i = 0; i < imageFiles.count() && !progress.wasCanceled(); ++i) {
         const auto now = std::chrono::steady_clock::now();
         if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(500)) {
@@ -689,7 +702,7 @@ void MainWindow::openFolder(const QString& dir)
             timeWhenProgressLastUpdated = now;
         }
         const QString filename = imageFiles[i];
-        const QString displayName = filename.mid(dir.length() + 1);
+        const QString displayName = filename.mid(dirLength);
         QListWidgetItem* item = new QListWidgetItem(displayName, files);
         const auto maskFileExists = [&]() { return maskFilenames.find(getMaskFilename(filename)) != maskFilenames.end(); };
         const auto thingAnnotationsFileExists = [&]() { return thingAnnotationsFilenames.find(getThingAnnotationsPathFilename(filename)) != thingAnnotationsFilenames.end(); };
