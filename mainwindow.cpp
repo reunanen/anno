@@ -487,7 +487,7 @@ QString getDirectory(const QFileDialog& dialog)
     const QLineEdit* dirLineEdit = dynamic_cast<QLineEdit*>(dialog.focusWidget());
     if (dirLineEdit) {
         const QString text = dirLineEdit->text();
-        if (QDir(text).exists()) {
+        if (!text.isEmpty() && QDir(text).exists()) {
             // prefer the typed-in directory, if it looks good
             return text;
         }
