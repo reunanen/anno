@@ -118,6 +118,9 @@ void MainWindow::closeEvent(QCloseEvent *event)
     else if (alphaChannelButton && alphaChannelButton->isChecked()) {
         settings.setValue("channelSelection", "alpha");
     }
+    else if (rgbChannelsButton && rgbChannelsButton->isChecked()) {
+        settings.setValue("channelSelection", "rgb");
+    }
 
     if (files->count() > 0) {
         QProgressDialog progress("", tr("Stop"), 0, 0, this);
@@ -416,18 +419,21 @@ void MainWindow::createToolList()
         greenChannelButton = new QRadioButton(tr("Green channel"));
         blueChannelButton = new QRadioButton(tr("Blue channel"));
         alphaChannelButton = new QRadioButton(tr("Alpha channel"));
+        rgbChannelsButton = new QRadioButton(tr("RGB channels"));
 
         imageChannelsLayout->addWidget(allImageChannelsButton);
         imageChannelsLayout->addWidget(redChannelButton);
         imageChannelsLayout->addWidget(greenChannelButton);
         imageChannelsLayout->addWidget(blueChannelButton);
         imageChannelsLayout->addWidget(alphaChannelButton);
+        imageChannelsLayout->addWidget(rgbChannelsButton);
 
         connect(allImageChannelsButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
         connect(redChannelButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
         connect(greenChannelButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
         connect(blueChannelButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
         connect(alphaChannelButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
+        connect(rgbChannelsButton, SIGNAL(toggled(bool)), this, SLOT(onChannelSelectionToggled(bool)));
 
         imageChannels->setLayout(imageChannelsLayout);
 
@@ -443,6 +449,9 @@ void MainWindow::createToolList()
         }
         else if (channelSelection == "alpha") {
             alphaChannelButton->setChecked(true);
+        }
+        else if (channelSelection == "rgb") {
+            rgbChannelsButton->setChecked(true);
         }
         else {
             allImageChannelsButton->setChecked(true);
@@ -470,6 +479,7 @@ void MainWindow::createToolList()
         initChannelButton("green", greenChannelButton);
         initChannelButton("blue", blueChannelButton);
         initChannelButton("alpha", alphaChannelButton);
+        initChannelButton("rgb", rgbChannelsButton);
     }
 
     {
@@ -1295,10 +1305,15 @@ void MainWindow::initCurrentImage(QResultImageView::DelayedRedrawToken* delayedR
         greenChannelButton->setEnabled(channelSelectionsAvailable);
         blueChannelButton->setEnabled(channelSelectionsAvailable);
         alphaChannelButton->setEnabled(channelSelectionsAvailable && originalImage.hasAlphaChannel());
+        rgbChannelsButton->setEnabled(channelSelectionsAvailable && originalImage.hasAlphaChannel());
     }
 
     if (!channelSelectionsAvailable || allImageChannelsButton->isChecked()) {
         image->setImage(originalImage, delayedRedrawToken);
+    }
+    else if (rgbChannelsButton->isChecked()) {
+        currentlyShownImage = originalImage.convertToFormat(QImage::Format_RGB32);
+        image->setImage(currentlyShownImage, delayedRedrawToken);
     }
     else {
         const bool isRed = redChannelButton->isChecked();
