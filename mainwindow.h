@@ -164,6 +164,7 @@ private:
     QRadioButton* greenChannelButton = nullptr;
     QRadioButton* blueChannelButton = nullptr;
     QRadioButton* alphaChannelButton = nullptr;
+    QRadioButton* rgbChannelsButton = nullptr;
 
     QString currentWorkingFolder;
     QListWidgetItem* currentImageFileItem = nullptr;
