@@ -1,4 +1,4 @@
-# anno [![Build status](https://ci.appveyor.com/api/projects/status/kdnae9ik2ubeyaw4?svg=true)](https://ci.appveyor.com/project/reunanen/anno)
+# anno [![Build status](https://ci.appveyor.com/api/projects/status/kdnae9ik2ubeyaw4/branch/master?svg=true)](https://ci.appveyor.com/project/reunanen/anno/branch/master)
 
 A desktop application that can be used to annotate images for semantic segmentation and object detection purposes.
 
