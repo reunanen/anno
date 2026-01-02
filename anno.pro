@@ -4,9 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui uitools
-
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QT       += core gui uitools widgets concurrent
 
 TARGET = anno
 TEMPLATE = app

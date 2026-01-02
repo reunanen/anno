@@ -239,7 +239,7 @@ void MainWindow::createFileList()
 
     QVBoxLayout* layout = new QVBoxLayout(widget);
     layout->setSpacing(0);
-    layout->setMargin(1);
+    layout->setContentsMargins(1, 1, 1, 1);
 
     hideUnannotatedFiles = new QCheckBox(tr("Hide unannotated"), this);
     layout->addWidget(hideUnannotatedFiles);
@@ -560,16 +560,6 @@ void MainWindow::onOpenRecentFolder()
     }
 }
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
-namespace std {
-  template<> struct hash<QString> {
-    std::size_t operator()(const QString& s) const {
-      return (size_t) qHash(s);
-    }
-  };
-}
-#endif // QT_VERSION
-
 void MainWindow::openFolder(const QString& dir)
 {
     saveMaskIfDirty();
@@ -660,7 +650,7 @@ void MainWindow::openFolder(const QString& dir)
         const auto now = std::chrono::steady_clock::now();
         if (now - timeWhenProgressLastUpdated >= std::chrono::milliseconds(500)) {
             const double progressEstimate = comparisonsDone / imageFilesCountLog2;
-            progress.setValue(std::min(static_cast<int>(std::round(progressEstimate)), imageFiles.count()));
+            progress.setValue(std::min(static_cast<qsizetype>(std::round(progressEstimate)), imageFiles.count()));
             QApplication::processEvents();
             timeWhenProgressLastUpdated = std::chrono::steady_clock::now();
 
@@ -708,7 +698,7 @@ void MainWindow::openFolder(const QString& dir)
 
     const auto getDirLength = [&dir]() {
         if (dir.isEmpty()) {
-            return 0;
+            return static_cast<qsizetype>(0);
         }
         const auto lastChar = dir[dir.length() - 1];
         if (lastChar == '/' || lastChar == '\\') {
@@ -732,7 +722,7 @@ void MainWindow::openFolder(const QString& dir)
         const auto maskFileExists = [&]() { return maskFilenames.find(getMaskFilename(filename)) != maskFilenames.end(); };
         const auto thingAnnotationsFileExists = [&]() { return thingAnnotationsFilenames.find(getThingAnnotationsPathFilename(filename)) != thingAnnotationsFilenames.end(); };
         if (maskFileExists() || thingAnnotationsFileExists()) {
-            item->setBackgroundColor(hasAnnotationsColor);
+            item->setBackground(hasAnnotationsColor);
         }
         else {
             if (hideUnannotated) {
@@ -1159,7 +1149,7 @@ void MainWindow::onFileItemChanged(QListWidgetItem* current, QListWidgetItem* pr
 
 bool MainWindow::hasAnnotations(const QListWidgetItem* item) const
 {
-    return item->backgroundColor() == hasAnnotationsColor;
+    return item->background().color() == hasAnnotationsColor;
 }
 
 void MainWindow::updateTextColor(QListWidgetItem* item, const QString& baseImageFilename)
@@ -1167,10 +1157,10 @@ void MainWindow::updateTextColor(QListWidgetItem* item, const QString& baseImage
     QFile file;
     file.setFileName(getInferenceResultPathFilename(baseImageFilename));
     if (!file.exists()) {
-        item->setTextColor(hasNoInferenceResultsFileColor);
+        item->setForeground(hasNoInferenceResultsFileColor);
         return;
     }
-    item->setTextColor(file.size() > 2 ? hasInferenceResultsColor : hasInferenceResultsFileColor);
+    item->setForeground(file.size() > 2 ? hasInferenceResultsColor : hasInferenceResultsFileColor);
 }
 
 MainWindow::InferenceResults MainWindow::readResultsJSON(const QString& filename)
@@ -1372,11 +1362,11 @@ bool MainWindow::conditionallyChangeFirstClass(const QString& oldName, QColor ol
 
 void MainWindow::setClassItemColor(QListWidgetItem* listWidgetItem, QColor color)
 {
-    listWidgetItem->setBackgroundColor(color);
+    listWidgetItem->setBackground(color);
 
     const QColor hslColor = color.toHsl();
 
-    listWidgetItem->setTextColor(hslColor.lightness() < 128 ? Qt::white : Qt::black);
+    listWidgetItem->setForeground(hslColor.lightness() < 128 ? Qt::white : Qt::black);
 }
 
 void MainWindow::onAnnotateStuff(bool toggled)
@@ -1581,7 +1571,7 @@ void MainWindow::onAnnotationUpdated()
         QTimer::singleShot(10000, this, SLOT(onSaveMask()));
 
         if (currentImageFileItem != nullptr) {
-            currentImageFileItem->setBackgroundColor(hasAnnotationsColor); // now we will have a mask file
+            currentImageFileItem->setBackground(hasAnnotationsColor); // now we will have a mask file
         }
 
         maskUndoBuffer.push_back(currentMask);
@@ -1640,7 +1630,7 @@ void MainWindow::saveCurrentThingAnnotations()
         }
 
         if (currentImageFileItem != nullptr) {
-            currentImageFileItem->setBackgroundColor(hasAnnotationsColor); // now we will have an annotation file
+            currentImageFileItem->setBackground(hasAnnotationsColor); // now we will have an annotation file
         }
     }
 
@@ -2126,7 +2116,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                         };
 
                         if (deleteAnnotations()) {
-                            files->item(row)->setBackgroundColor(Qt::white);
+                            files->item(row)->setBackground(Qt::white);
 
                             // Make file writable again
                             QFile file(filename);
