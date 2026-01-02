@@ -48,9 +48,12 @@ Section "Main Section" MainSec
 
 	SetOutPath $INSTDIR\bin
 	File release\anno.exe
-	File ${QTDIR}\bin\Qt5Core.dll
-	File ${QTDIR}\bin\Qt5Gui.dll
-	File ${QTDIR}\bin\Qt5Widgets.dll
+	File ${QTDIR}\bin\Qt6Core.dll
+	File ${QTDIR}\bin\Qt6Gui.dll
+	File ${QTDIR}\bin\Qt6UiTools.dll
+	File ${QTDIR}\bin\Qt6Widgets.dll
+	File ${QTDIR}\bin\Qt6OpenGL.dll
+	File ${QTDIR}\bin\Qt6OpenGLWidgets.dll
 	SetOutPath $INSTDIR\bin\platforms
 	File ${QTDIR}\plugins\platforms\qwindows.dll
 	SetOutPath $INSTDIR\bin\imageformats
