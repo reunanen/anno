@@ -2085,7 +2085,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
                                 else {
                                     QMessageBox::warning(this,
                                                          tr("Unexpected mask image format"),
-                                                         tr("Unexpected mask image format %1 in image %2").arg(QString::number(mask.format())), maskFilename);
+                                                         tr("Unexpected mask image format %1 in image %2").arg(QString::number(mask.format()), maskFilename));
                                 }
                             }
                         }
