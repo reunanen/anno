@@ -2,7 +2,7 @@
 
 A desktop application that can be used to annotate images for semantic segmentation and object detection purposes.
 
-You can find a Windows installer here: https://ci.appveyor.com/project/reunanen/anno/build/artifacts
+You can find a Windows installer in the [Releases](https://github.com/reunanen/anno/releases) section.
 
 The program generally looks like this:
 
