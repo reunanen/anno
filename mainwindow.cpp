@@ -1183,7 +1183,7 @@ MainWindow::InferenceResults MainWindow::readResultsJSON(const QString& filename
         return results;
     }
 
-    if (file.size() > 100e6) {
+    if (file.size() > 1e9) {
         results.error = tr("The inference results JSON file is insanely large, so we're really not even trying to parse it.\n\nFor your reference, the file is:\n%1").arg(filename);
         return results;
     }
